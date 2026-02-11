@@ -200,7 +200,7 @@ DiscreteEventSimulator::on_configure(const rclcpp_lifecycle::State & /*state*/)
         //   critical_point_topic, 
         //   rclcpp::SensorDataQoS(),std::bind(&DiscreteEventSimulator::criticalPointCallback, 
         //   this, std::placeholders::_1));
-        material_amount_servers_.push_back(create_service<athena_exe_msgs::srv::GetMaterialAmount>( name + std::string("/get_material_amount"),
+        material_amount_servers_.push_back(create_service<material_handler_msgs::srv::GetMaterialAmount>( name + std::string("/get_material_amount"),
                 std::bind(&DiscreteEventSimulator::getMaterialAmountCallback, this, std::placeholders::_1, std::placeholders::_2)));
 
       capacities_.insert(std::make_pair(robotID,capacity));
@@ -215,14 +215,14 @@ DiscreteEventSimulator::on_configure(const rclcpp_lifecycle::State & /*state*/)
             std::bind(&DiscreteEventSimulator::handle_accepted, this, std::placeholders::_1, name)));
 
 
-      dump_action_servers_.push_back(rclcpp_action::create_server<athena_exe_msgs::action::MoveJoint>(
+      dump_action_servers_.push_back(rclcpp_action::create_server<material_handler_msgs::action::MoveJoint>(
           this,
           action_dump_name,
           std::bind(&DiscreteEventSimulator::handle_bucket_cmd_goal, this, std::placeholders::_1, std::placeholders::_2),
           std::bind(&DiscreteEventSimulator::handle_bucket_cmd_cancel, this, std::placeholders::_1),
           std::bind(&DiscreteEventSimulator::handle_bucket_cmd_accepted, this, std::placeholders::_1, robotID)));
       
-      load_action_servers_.push_back(rclcpp_action::create_server<athena_exe_msgs::action::MoveJoint>(
+      load_action_servers_.push_back(rclcpp_action::create_server<material_handler_msgs::action::MoveJoint>(
           this,
           action_load_name,
           std::bind(&DiscreteEventSimulator::handle_bucket_cmd_goal, this, std::placeholders::_1, std::placeholders::_2),
@@ -372,8 +372,8 @@ void DiscreteEventSimulator::handle_accepted(const std::shared_ptr<GoalHandleNav
 }
 
  void DiscreteEventSimulator::executeBucketCmd(const std::shared_ptr<GoalHandleBucketCommand> goal_handle, const int robotID){
-        auto feedback = std::make_shared<athena_exe_msgs::action::MoveJoint::Feedback>();
-        auto result = std::make_shared<athena_exe_msgs::action::MoveJoint::Result>();
+        auto feedback = std::make_shared<material_handler_msgs::action::MoveJoint::Feedback>();
+        auto result = std::make_shared<material_handler_msgs::action::MoveJoint::Result>();
         const auto goal = goal_handle->get_goal();
         int step = 0;
       
@@ -470,7 +470,7 @@ void DiscreteEventSimulator::handle_accepted(const std::shared_ptr<GoalHandleNav
 
 
   rclcpp_action::GoalResponse DiscreteEventSimulator::handle_bucket_cmd_goal(const rclcpp_action::GoalUUID & uuid,
-            std::shared_ptr<const athena_exe_msgs::action::MoveJoint::Goal> goal)
+            std::shared_ptr<const material_handler_msgs::action::MoveJoint::Goal> goal)
         {
             RCLCPP_INFO(this->get_logger(), "Received goal request to move the bucket" );
             (void)uuid;
@@ -493,8 +493,8 @@ void DiscreteEventSimulator::handle_bucket_cmd_accepted(const std::shared_ptr<Go
     std::thread{std::bind(&DiscreteEventSimulator::executeBucketCmd, this, _1, robotID), goal_handle}.detach();
 }
 
-void DiscreteEventSimulator::getMaterialAmountCallback(const std::shared_ptr<athena_exe_msgs::srv::GetMaterialAmount::Request> request,
-  std::shared_ptr<athena_exe_msgs::srv::GetMaterialAmount::Response> response){
+void DiscreteEventSimulator::getMaterialAmountCallback(const std::shared_ptr<material_handler_msgs::srv::GetMaterialAmount::Request> request,
+  std::shared_ptr<material_handler_msgs::srv::GetMaterialAmount::Response> response){
   auto pile_id = request->pile_id;
   auto pile_loc = request->pile_location;
   double amount = getMaterialAmount(pile_id,pile_loc);

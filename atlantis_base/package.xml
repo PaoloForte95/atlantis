@@ -16,7 +16,6 @@
   <depend>geometry_msgs</depend> 
   <depend>sensor_msgs</depend> 
   <depend>eigen_conversions</depend>
-  <depend>athena_exe_msgs</depend>
   <depend>atlantis_util</depend>
   <depend>material_handler_msgs</depend>
   <depend>location_msgs</depend>
