@@ -16,6 +16,25 @@ Atlantis can be used to test different applications domains including:
 2. Manipulation
 3. Navigation
 
+<h1 align="center">Docker Installation</h1>
+
+To build the docker image, run
+```
+cd <path/to/atlantis>
+docker build -t atlantis_image .
+```
+To allow GUI, run:
+```
+xhost +local:docker
+```
+
+To run:
+```
+docker run -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix atlantis_image
+```
+
+Then you can skip to the Running section
+
 <h1 align="center">Dependencies</h1>
 
 # ROS2 

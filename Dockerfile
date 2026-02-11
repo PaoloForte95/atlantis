@@ -1,36 +1,45 @@
-FROM ros:humble
+FROM ros:jazzy
+
 ARG USERNAME=milo
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
 
+# Install Java + ROS build tools (no rosdep init)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    sudo \
+    openjdk-21-jdk \
+    python3-rosdep \
+    python3-colcon-common-extensions \
+    python3-pip \
+    git \
+    ros-jazzy-ament-cmake \
+    ros-jazzy-navigation2 \
+    ros-jazzy-nav2-bringup \
+    && useradd -m -s /bin/bash $USERNAME \
+    && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create the user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    && apt-get update \
-    && apt-get install -y sudo \
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-RUN apt-get update && apt-get install -y python3-pip libopenjp2-7 libopenjp2-7-dev libcups2-dev
-ENV SHELL /bin/bash
+# Source ROS automatically
+RUN echo "source /opt/ros/jazzy/setup.bash" >> /home/$USERNAME/.bashrc
 
+# Placeholder for cloning repos
+WORKDIR /home/$USERNAME/ws/src
+RUN git clone https://github.com/PaoloForte95/navigo.git
+RUN git clone https://github.com/PaoloForte95/common_interfaces.git
+WORKDIR /home/$USERNAME/ws
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/ros/jazzy/setup.bash && colcon build --packages-select navigo location_msgs material_handler_msgs object_detection_msgs standard_msgs
 
-# Install ros2 humble
-RUN DEBIAN_FRONTEND=noninteractive apt install -yq ros-humble-desktop xterm nano gedit ros-humble-xacro ros-humble-teleop-twist-keyboard ros-humble-robot-state-publisher ros-humble-ros2-controllers ros-humble-geographic-msgs ros-humble-launch-param-builder ros-humble-nav2-msgs
+RUN echo "source /home/$USERNAME/ws/install/setup.bash" >> /home/$USERNAME/.bashrc
 
-
-# Copy the atlantis fiels
-WORKDIR /home/milo/ws/src
+WORKDIR /home/$USERNAME/ws/src
 COPY ./ ./atlantis
+SHELL ["/bin/bash", "-c"]
+WORKDIR /home/$USERNAME/ws
+RUN source /home/$USERNAME/ws/install/setup.bash && colcon build --packages-up-to atlantis && source /home/$USERNAME/ws/install/setup.bash
 
-RUN git clone https://github.com/PaoloForte95/material_handler
-#RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install"
-# source ros2 and workspace
-RUN echo "source /opt/ros/humble/setup.bash" >> /home/milo/.bashrc
+WORKDIR /home/$USERNAME/ws
 
-WORKDIR /home/milo/ws
-# [Optional] Set the default user. Omit if you want to keep the default as root.
 USER $USERNAME
 
-
 CMD ["/bin/bash"]
+
