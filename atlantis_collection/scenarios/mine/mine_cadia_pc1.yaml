@@ -1,0 +1,7 @@
+image: mine_cadia_pc1.png
+resolution: 0.2 #0.664
+#origin: [653.0, 238.0, 0.0]
+origin: [0.0, 0.0, 0.0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196

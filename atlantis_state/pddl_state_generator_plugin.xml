@@ -1,0 +1,5 @@
+<library path="atlantis_pddl_state_generator">
+  <class name="atlantis_state::PddlStateGenerator" type="atlantis_state::PddlStateGenerator" base_class_type="atlantis_state::StateGenerator">
+    <description>PDDL Symbolic State Generator</description>
+  </class>
+</library>

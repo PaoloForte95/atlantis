@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>atlantis_collection</name>
+  <version>0.0.1</version>
+  <description>A package that contains some scenarios.</description>
+  <maintainer email="paolo.forte@oru.se">pofe</maintainer>
+  <author email="paolo.forte@oru.se">Paolo Forte</author>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- a25 -->
+  <exec_depend>a25_description</exec_depend>
+  <exec_depend>a25_gazebo</exec_depend>
+  <exec_depend>a25_launch</exec_depend>
+   <!-- zeux -->
+  <exec_depend>zeux_description</exec_depend>
+  <exec_depend>zeux_gazebo</exec_depend>
+  <exec_depend>zeux_gazebo_plugins</exec_depend>
+  <exec_depend>zeux_launch</exec_depend>
+  <!-- husky -->
+  <exec_depend>husky_description</exec_depend>
+  <exec_depend>husky_gazebo</exec_depend>
+  <exec_depend>husky_launch</exec_depend>
+
+  <!-- turtlebot -->
+
+  <!-- wheel_loader -->
+  <exec_depend>wheel_loader_bucket_controller</exec_depend>
+  <exec_depend>wheel_loader_description</exec_depend>
+  <exec_depend>wheel_loader_gazebo</exec_depend>
+  <exec_depend>wheel_loader_gazebo_plugins</exec_depend>
+  <exec_depend>wheel_loader_launch</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
