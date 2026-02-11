@@ -36,10 +36,11 @@ git clone https://github.com/PaoloForte95/navigo
 colcon build --packages-select navigo
 ```
 
-# Athena
-Install Athena  by following the instructions provided at this [link](https://github.com/PaoloForte95/athena).
-
-
+# Common Interface
+Clone the repository for common interface msgs, srvs, and actions.
+```
+https://github.com/PaoloForte95/common_interfaces
+```
 # Collection
 
 Get a collection of scenarios and machines from [atlantis_collection] (https://gitsvn-nt.oru.se/pofe/atlantis_collection)
