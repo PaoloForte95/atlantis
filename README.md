@@ -52,7 +52,7 @@ colcon build --packages-select atlantis_collection
 
 Clone this repository, using the command
 ```
-git clone https://gitsvn-nt.oru.se/pofe/atlantis
+git clone https://github.com/PaoloForte95/atlantis.git
 ```
 
 To build, run the command:
