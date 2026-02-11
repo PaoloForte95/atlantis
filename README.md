@@ -36,6 +36,15 @@ colcon build --packages-select navigo
 ## Athena (Planning)
 Install Athena  by following the instructions provided at this [link](https://gitsvn-nt.oru.se/pofe/athena).
 
+
+## Collection
+
+Get a collection of scenarios and machines from [atlantis_collection] (https://gitsvn-nt.oru.se/pofe/atlantis_collection)
+```
+git clone https://gitsvn-nt.oru.se/pofe/atlantis_collection.git
+colcon build --packages-select atlantis_collection
+```
+
 # Build
 
 Clone this repository, using the command
