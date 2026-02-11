@@ -40,6 +40,7 @@ colcon build --packages-select navigo
 Clone the repository for common interface msgs, srvs, and actions.
 ```
 https://github.com/PaoloForte95/common_interfaces
+colcon build --packages-select location_msgs material_handler_msgs object_detection_msgs standard_msgs  
 ```
 # Collection
 
