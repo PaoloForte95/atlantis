@@ -76,7 +76,7 @@ def generate_launch_description():
     ld.add_action(declare_use_simple_commander_cmd)
     ld.add_action(start_aiddl_simulator_cmd)
     ld.add_action(start_base_simulator_cmd)
-    ld.add_action(start_gazebo_simulator_cmd)
+    #ld.add_action(start_gazebo_simulator_cmd)
     ld.add_action(start_simple_commander_cmd)
 
     return ld
