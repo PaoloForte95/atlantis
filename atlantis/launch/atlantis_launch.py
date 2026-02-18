@@ -53,12 +53,12 @@ def generate_launch_description():
                           'scenario': scenario,
                           }.items())
     
-    start_gazebo_simulator_cmd =  IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(launch_dir, 'launch', 'atlantis_gazebo_simulator_launch.py')),
-        condition=IfCondition(EqualsSubstitution(LaunchConfiguration('simulator_level'), "PS")),
-        launch_arguments={'namespace': namespace,
-                          'scenario': scenario,
-                          }.items())
+    # start_gazebo_simulator_cmd =  IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(os.path.join(launch_dir, 'launch', 'atlantis_gazebo_simulator_launch.py')),
+    #     condition=IfCondition(EqualsSubstitution(LaunchConfiguration('simulator_level'), "PS")),
+    #     launch_arguments={'namespace': namespace,
+    #                       'scenario': scenario,
+    #                       }.items())
     
     start_simple_commander_cmd =  IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(simple_cm_dir,'simple_commander_launch.py')),
