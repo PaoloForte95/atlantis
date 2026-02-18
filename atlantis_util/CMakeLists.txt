@@ -7,6 +7,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 if(NOT EIGEN3_FOUND)
   find_package(Eigen REQUIRED)
@@ -17,6 +18,7 @@ endif()
 
 set(dependencies
   Eigen3
+  ament_index_cpp
 )
 
 include_directories(

@@ -1,6 +1,7 @@
 #include "atlantis_util/file_handler.h"
 #include <fstream>
 #include <algorithm>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 namespace atlantis {
 namespace util {
@@ -152,6 +153,22 @@ std::vector<Waypoint> parseWaypoints(std::string file_path) {
     }
     
     return waypoints;
+}
+
+
+std::string resolve_pkg_uri(const std::string& uri)
+{
+    const std::string prefix = "package://";
+    if (uri.rfind(prefix, 0) != 0)
+        return uri;
+
+    std::string rest = uri.substr(prefix.size());
+    auto pos = rest.find('/');
+    std::string pkg = rest.substr(0, pos);
+    std::string rel = (pos == std::string::npos) ? "" : rest.substr(pos + 1);
+
+    std::string share = ament_index_cpp::get_package_share_directory(pkg);
+    return share + "/" + rel;
 }
 
 // std::vector<Waypoint> parseWaypoints(std::string file_path){

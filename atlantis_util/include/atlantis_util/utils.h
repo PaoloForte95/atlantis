@@ -27,6 +27,30 @@ struct Waypoint {
 };
 
 
+Waypoint getNearestWaypoint(
+    const std::vector<Waypoint>& waypoints,
+    const double pose_x, const double pose_y)
+{
+  if (waypoints.empty()) return Waypoint{0, 0, 0, "None"};
+  const double px = pose_x;
+  const double py = pose_y;
+  Waypoint nearest = waypoints.front();
+  double best_d2 = std::numeric_limits<double>::infinity();
+
+  for (const auto& wp : waypoints) {
+    const double dx = wp.x - px;
+    const double dy = wp.y - py;
+    const double d2 = dx*dx + dy*dy;  // squared distance (no sqrt needed)
+
+    if (d2 < best_d2) {
+      best_d2 = d2;
+      nearest = wp;
+    }
+  }
+  return nearest;
+}
+
+
 struct Material {
     std::string name_;
     int id;
