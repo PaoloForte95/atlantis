@@ -7,7 +7,11 @@
 #include <string>
 
 #include "atlantis_state/state_generator.hpp"
-
+#include <location_msgs/msg/waypoint.hpp>
+#include <location_msgs/msg/waypoint_array.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include "atlantis_util/utils.h"
 namespace atlantis_state
 {
 
@@ -25,11 +29,9 @@ public:
   ~PddlStateGenerator();
 
   /**
-   * @brief Configuring plugin
-   * @param parent Lifecycle node pointer
-   * @param name Name of plugin map
-   * @param tf Shared ptr of TF2 buffer
-   * @param costmap_ros Costmap2DROS object
+   * @brief Configure lifecycle node
+   * @param parent Weak pointer to the lifecycle node
+   * @param name The name of this state generator
    */
   void configure(
     const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent,
@@ -57,6 +59,12 @@ public:
    */
   standard_msgs::msg::StringMultiArray generateState() override;
 
+private:
+    
+  void currentPoseCallback(geometry_msgs::msg::PoseStamped msg, int robotID);
+
+  void waypointArrayCallback(location_msgs::msg::WaypointArray msg);
+
 protected:
   /**
    * @brief Callback executed when a paramter change is detected
@@ -68,13 +76,20 @@ protected:
 
   rclcpp::Logger logger_{rclcpp::get_logger("PddlStateGenerator")};
   rclcpp_lifecycle::LifecycleNode::WeakPtr node_;
-   std::string  name_;
-    std::mutex  mutex_;
+  std::string  name_;
+  std::mutex  mutex_;
+  std::vector<std::string> robots_ids_;
+  std::vector<atlantis::util::Waypoint> waypoints_;
+  standard_msgs::msg::StringMultiArray atlantis_state_;
+
+  //Subs
+  std::vector<rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr> position_subs_;
+  rclcpp::Subscription<location_msgs::msg::WaypointArray>::SharedPtr waypoint_array_subs_;
 
   // Dynamic parameters handler
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };
 
-}  // namespace nav2_smac_planner
+}  
 
-#endif  // NAV2_SMAC_PLANNER__SMAC_PLANNER_LATTICE_HPP_
+#endif  

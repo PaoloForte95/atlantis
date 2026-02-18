@@ -9,13 +9,21 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(standard_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
+find_package(location_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(atlantis_util REQUIRED)
 
 set(dependencies
   rclcpp
   rclcpp_lifecycle
   rclcpp_components
-  standard_msgs
   pluginlib
+  standard_msgs
+  location_msgs
+  geometry_msgs
+  atlantis_util
+  Eigen3
 )
 
 
@@ -43,6 +51,9 @@ add_library(atlantis_pddl_state_generator SHARED
 
 ament_target_dependencies(atlantis_pddl_state_generator
   ${dependencies}
+)
+target_link_libraries(atlantis_pddl_state_generator 
+  Eigen3::Eigen
 )
 
 

@@ -88,8 +88,8 @@ StateGeneratorNode::StateGeneratorNode(const rclcpp::NodeOptions & options)
   RCLCPP_INFO(get_logger(), "Creating state generator node");
 
   declare_parameter("state_generator_plugin", default_id_);
-
   get_parameter("state_generator_plugin", state_generator_id_);
+  
   if (state_generator_id_ == default_id_) {
     declare_parameter(default_id_ + ".plugin", default_type_);
   }
@@ -124,7 +124,7 @@ StateGeneratorNode::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
 
   // Initialize pubs & subs
-  state_publisher_ = create_publisher<standard_msgs::msg::StringMultiArray>("symbolic_state", 1);
+  state_publisher_ = create_publisher<standard_msgs::msg::StringMultiArray>("atlantis_state", 1);
 
 
   return CallbackReturn::SUCCESS;
@@ -133,7 +133,6 @@ StateGeneratorNode::on_configure(const rclcpp_lifecycle::State & /*state*/)
 CallbackReturn
 StateGeneratorNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
 {
-  RCLCPP_INFO(get_logger(), "Activating");
 
   state_publisher_->on_activate();
   state_generator_->activate();
@@ -144,8 +143,6 @@ StateGeneratorNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
 CallbackReturn
 StateGeneratorNode::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
 {
-  RCLCPP_INFO(get_logger(), "Deactivating");
-
   state_publisher_->on_deactivate();
   state_generator_->deactivate();
 

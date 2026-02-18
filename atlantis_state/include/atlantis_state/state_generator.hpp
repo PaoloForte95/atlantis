@@ -25,10 +25,7 @@ public:
   virtual ~StateGenerator() {}
 
   /**
-   * @param  parent pointer to user's node
-   * @param  name The name of this planner
-   * @param  tf A pointer to a TF buffer
-   * @param  costmap_ros A pointer to the costmap
+
    */
   virtual void configure(
     const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent, std::string name) = 0;
