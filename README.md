@@ -93,7 +93,7 @@ where the *level* can be:
 
 One example is:
 ```
-ros2 launch atlantis atlantis_launch.py scenario:=src/atlantis/atlantis_collection/scenarios/mine/mine1.yaml simulator_level:=NPS
+ros2 launch atlantis atlantis_launch.py scenario:=src/atlantis_collection/scenarios/mine/map1/mine1.yaml simulator_level:=NPS
 ```
 To run a set of actions, run:
 ```
