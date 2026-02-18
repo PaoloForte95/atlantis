@@ -13,6 +13,7 @@
   <depend>std_msgs</depend>
   <depend>location_msgs</depend>
   <depend>standard_msgs</depend>
+  <depend>atlantis_util</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
