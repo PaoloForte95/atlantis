@@ -195,10 +195,9 @@ BaseSimulator::BaseSimulator(
   const rclcpp::NodeOptions & options)
 : rclcpp_lifecycle::LifecycleNode(node_name, ns, options)
 {
-    std::string waypoints_file, scenario;
+    std::string waypoints_file, map_uri, wp_file_uri, path_folder_uri;
     std::vector<std::string> default_ids, new_metrics;
     metrics_ = {"execution_time", "action_time"};
-    declare_parameter("scenario", "empty");
     declare_parameter("use_precomputed_paths", false);
     declare_parameter("precomputed_paths_folder", "");
     declare_parameter("map", "empty");
@@ -217,14 +216,13 @@ BaseSimulator::BaseSimulator(
     declare_parameter("refilling", false);
     declare_parameter("randomness", false);
 
-    get_parameter("scenario", scenario);
     get_parameter("use_precomputed_paths", use_precomputed_paths_);
-    get_parameter("precomputed_paths_folder", precomputed_paths_folder_);
-    get_parameter("map", map_yaml_);
+    get_parameter("precomputed_paths_folder", path_folder_uri);
+    get_parameter("map", map_uri);
     get_parameter("robots", robots_ids_);
     get_parameter("materials", materials_ids_);
     get_parameter("waypoints", waypoints_ids_);
-    get_parameter("waypoints_file", waypoints_file);
+    get_parameter("waypoints_file", wp_file_uri);
     get_parameter("metrics", new_metrics);
     get_parameter("planners", planners_ids_);
     get_parameter("goal_tolerance", goal_tolerance_);
@@ -235,16 +233,10 @@ BaseSimulator::BaseSimulator(
     get_parameter("max_sim_time", max_sim_time_);
     get_parameter("refilling", refilling_);
     get_parameter("randomness", randomness_);
-    
 
-
-    auto collection_dir = ament_index_cpp::get_package_share_directory("atlantis_collection");
-    
-    map_dir_ = collection_dir + "/scenarios/" + scenario + "/";
-
-    auto waypoint_dir = collection_dir + "/scenarios/" + scenario + "/";
-    waypoints_file = waypoint_dir + waypoints_file;
-
+    map_dir_ = resolve_pkg_uri(map_uri);
+    waypoints_file = resolve_pkg_uri(wp_file_uri);
+    precomputed_paths_folder_ = resolve_pkg_uri(path_folder_uri);
 
     //Create the pubs
     for (size_t i = 0; i < robots_ids_.size(); ++i) {
@@ -263,7 +255,8 @@ BaseSimulator::BaseSimulator(
     }
 
     clock_pub_ = create_publisher<rosgraph_msgs::msg::Clock>("/clock", 10);
-     material_flow_pub_ =  create_publisher<material_handler_msgs::msg::MaterialFlow>("material_flow",rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+    waypoints_pub_ = create_publisher<location_msgs::msg::WaypointArray>("waypoints",rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+    material_flow_pub_ =  create_publisher<material_handler_msgs::msg::MaterialFlow>("material_flow",rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
     rclcpp::Clock system_clock(RCL_SYSTEM_TIME);
     last_real_time_ = system_clock.now().seconds();
     timer_sim_time_ = this->create_wall_timer(
@@ -340,7 +333,6 @@ BaseSimulator::on_configure(const rclcpp_lifecycle::State & /*state*/)
     if(waypoints_.empty()){
       for (size_t i = 0; i < waypoints_ids_.size(); ++i) {
             auto wp = waypoints_ids_[i];
-            RCLCPP_INFO(this->get_logger(), "Added waypoint %s", wp.c_str());
             double x,y,z,yaw;
             declare_parameter(wp+".x", 0.0);
             declare_parameter(wp+".y", 0.0);
@@ -356,9 +348,29 @@ BaseSimulator::on_configure(const rclcpp_lifecycle::State & /*state*/)
             waypoint.theta = yaw;
             waypoint.name = wp;
             waypoints_.push_back(waypoint);
-           
+
+            RCLCPP_INFO(this->get_logger(), "Added waypoint %s: (%f, %f, %f)", wp.c_str(), x, y, yaw);
         }
     }
+
+
+    auto wp_msg = location_msgs::msg::WaypointArray();
+    wp_msg.header.frame_id = "world";
+    for (auto waypoint: waypoints_){
+      auto wp = location_msgs::msg::Waypoint();
+      wp.name = waypoint.name;
+      wp.pose.position.x = waypoint.x;
+      wp.pose.position.y = waypoint.y;
+      Eigen::Quaterniond quat = rpyToQuaternion(0,0,waypoint.theta);
+      wp.pose.orientation.x = quat.x();
+      wp.pose.orientation.y = quat.y();
+      wp.pose.orientation.z = quat.z();
+      wp.pose.orientation.w = quat.w();
+      wp_msg.waypoints.push_back(wp);
+    }
+
+    waypoints_pub_->publish(wp_msg);
+
    
     int color = 1;
     for (size_t i = 0; i < materials_ids_.size(); ++i) {
@@ -543,6 +555,7 @@ BaseSimulator::on_activate(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Activating");
   map_pub_->on_activate();
   clock_pub_->on_activate();
+  waypoints_pub_->on_activate();
   material_flow_pub_->on_activate();
    for (const auto& pair : robots_current_pose_) {
       pair.second->on_activate();
@@ -566,6 +579,7 @@ BaseSimulator::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Deactivating");
   map_pub_->on_deactivate();
   clock_pub_->on_deactivate();
+  waypoints_pub_->on_deactivate();
   material_flow_pub_->on_deactivate();
   for (const auto& pair : robots_current_pose_) {
       pair.second->on_deactivate();
@@ -589,6 +603,7 @@ BaseSimulator::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Cleaning up");
   map_pub_.reset();
   clock_pub_.reset();
+  waypoints_pub_.reset();
   material_flow_pub_.reset();
   for (const auto& pair : robots_current_pose_) {
     auto pub =  pair.second;

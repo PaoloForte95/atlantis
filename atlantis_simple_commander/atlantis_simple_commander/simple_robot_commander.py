@@ -1,5 +1,7 @@
 import tkinter as tk
-
+import os
+from pathlib import Path
+from ament_index_python.packages import get_package_share_directory
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -7,8 +9,6 @@ import numpy as np
 
 
 from nav2_msgs.action import NavigateToPose
-from material_handler_msgs.action import LoadMaterial
-from material_handler_msgs.action import DumpMaterial
 from geometry_msgs.msg import PoseStamped
 
 def euler_to_quaternion(roll, pitch, yaw):
@@ -19,23 +19,128 @@ def euler_to_quaternion(roll, pitch, yaw):
  
     return [qx, qy, qz, qw]
 
+def find_package_dir(uri: str) -> str:
+    prefix = "package://"
+    if not uri.startswith(prefix):
+        return uri  # not a package URI, return unchanged
+
+    rest = uri[len(prefix):]
+    parts = rest.split("/", 1)
+
+    package = parts[0]
+    package_path = get_package_share_directory(package)
+
+    if len(parts) == 1:
+        return package_path  # no subpath, just package dir
+    else:
+        return f"{package_path}/{parts[1]}"
+
 
 class RobotPositionSender(Node):
     def __init__(self):
         super().__init__('atlantis_simple_commander')
-        self.declare_parameter('robot_ids', [1])
-
-        self.robots = self.get_parameter('robot_ids').get_parameter_value().integer_array_value
-        self.get_logger().info(f'robots: {list(self.robots)}')
-        self._move_action_clients = {robot: ActionClient(self, NavigateToPose, 'robot'+str(robot)+'/navigate_to_pose')
-                            for robot in self.robots}
-        self._load_action_clients = {robot: ActionClient(self, LoadMaterial, 'robot'+str(robot)+'/send_load')
-                            for robot in self.robots}
-        self._dump_action_clients = {robot: ActionClient(self, DumpMaterial, 'robot'+str(robot)+'/send_dump')
-                            for robot in self.robots}
+        self.declare_parameter('robots', [''])
+        self.declare_parameter('waypoints_file', '')
         self.declare_parameter('actions', ['MoveTo'])
+
+        self.robots = self.get_parameter('robots').get_parameter_value().string_array_value
+        self.waypoints_file = self.get_parameter('waypoints_file').get_parameter_value().string_value
         self.actions = self.get_parameter('actions').get_parameter_value().string_array_value
-        self.create_gui()
+
+        # ---- Action clients ----
+        self._move_action_clients = {
+            robot: ActionClient(self, NavigateToPose, f'{robot}/navigate_to_pose')
+            for robot in self.robots
+        }
+        # ---- Load waypoints ----
+        if self.waypoints_file != "":
+            self.waypoints_path = find_package_dir(self.waypoints_file)
+
+            self.get_logger().info(f'waypoints_file: {self.waypoints_path}')
+            self.waypoints = self.load_waypoints()
+
+            self.create_gui()
+
+    def load_waypoints(self):
+        """Load waypoints from the specified file."""
+        waypoints = {}
+        
+        if not self.waypoints_path:
+            self.warn("No waypoints file specified")
+            return waypoints
+            
+        if not os.path.exists(self.waypoints_path):
+            self.error(f"Waypoints file does not exist: {self.waypoints_path}")
+            return waypoints
+            
+        try:
+            with open(self.waypoints_path, 'r') as file:
+                content = file.read()
+                
+            self.debug(f"File content:\n{content}")
+            
+            # Parse the custom format
+            lines = content.strip().split('\n')
+            current_waypoint = None
+            current_data = {}
+            
+            for i, line in enumerate(lines):
+                original_line = line
+                line = line.strip()
+                
+                self.debug(f"Line {i}: '{original_line}' -> stripped: '{line}'")
+                
+                if not line:
+                    continue
+                    
+                # Check if this is a waypoint name line (ends with colon, not indented)
+                if line.endswith(':'):
+                    # Save previous waypoint if exists
+                    if current_waypoint and current_data:
+                        self.debug(f"Saving waypoint '{current_waypoint}' with data: {current_data}")
+                        waypoints[current_waypoint] = current_data
+                    
+                    # Start new waypoint
+                    current_waypoint = line[:-1]  # Remove the colon
+                    current_data = {}
+                    self.debug(f"Started new waypoint: '{current_waypoint}'")
+                    
+                elif ':' in line:
+                    # Parse coordinate line (should be indented but we'll be flexible)
+                    try:
+                        key, value = line.split(':', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        current_data[key] = float(value)
+                        self.debug(f"Added {key}: {value} to current waypoint")
+                    except ValueError as e:
+                        self.warn(f"Could not parse line {i}: '{line}' - {e}")
+                        continue
+            
+            # Don't forget the last waypoint
+            if current_waypoint and current_data:
+                self.debug(f"Saving final waypoint '{current_waypoint}' with data: {current_data}")
+                waypoints[current_waypoint] = current_data
+                
+            self.info(f"Loaded {len(waypoints)} waypoints: {list(waypoints.keys())}")
+            
+            # Validate that each waypoint has required fields
+            valid_waypoints = {}
+            for name, data in waypoints.items():
+                if 'x' in data and 'y' in data and 'yaw' in data:
+                    valid_waypoints[name] = data
+                else:
+                    self.warn(f"Waypoint '{name}' missing required fields (x, y, yaw). Has: {list(data.keys())}")
+            
+            self.info(f"Valid waypoints: {len(valid_waypoints)} out of {len(waypoints)}")
+            return valid_waypoints
+            
+        except Exception as e:
+            self.error(f"Failed to load waypoints from {self.waypoints_path}: {str(e)}")
+            import traceback
+            self.error(f"Traceback: {traceback.format_exc()}")
+            
+        return waypoints
 
     def debug(self, msg):
         self.get_logger().debug(msg)
@@ -60,18 +165,30 @@ class RobotPositionSender(Node):
         # Create dropdown menu for selecting robot
         self.robot_var = tk.StringVar(self.root)
         self.robot_var.set(self.robots[0])  # default value
+        robot_label = tk.Label(self.root, text="Select Robot:")
+        robot_label.pack(pady=5)
         self.robot_dropdown = tk.OptionMenu(self.root, self.robot_var, *self.robots)
-        self.robot_dropdown.pack(pady=10)
+        self.robot_dropdown.pack(pady=5)
 
         # Create dropdown menu for selecting action
+        action_label = tk.Label(self.root, text="Select Action:")
+        action_label.pack(pady=5)
         self.action_var = tk.StringVar(self.root)
         self.action_var.set(self.actions[0])  # default value
         self.action_dropdown = tk.OptionMenu(self.root, self.action_var, *self.actions, command=self.update_fields)
-        self.action_dropdown.pack(pady=10)
+        self.action_dropdown.pack(pady=5)
 
-        # Create entry for specifying pose
+        # Create entry for specifying pose (manual input)
         self.pose_label = tk.Label(self.root, text="Pose: x,y,theta")
         self.pose_entry = tk.Entry(self.root)
+
+        # Create waypoint dropdown (for predefined waypoints)
+        self.waypoint_label = tk.Label(self.root, text="Select Waypoint:")
+        self.waypoint_var = tk.StringVar(self.root)
+        waypoint_options = list(self.waypoints.keys()) if self.waypoints else ["No waypoints loaded"]
+        if waypoint_options and waypoint_options[0] != "No waypoints loaded":
+            self.waypoint_var.set(waypoint_options[0])
+        self.waypoint_dropdown = tk.OptionMenu(self.root, self.waypoint_var, *waypoint_options)
 
         # Create entries for material_id and location (initially hidden)
         self.material_label = tk.Label(self.root, text="Material")
@@ -79,9 +196,8 @@ class RobotPositionSender(Node):
         self.location_label = tk.Label(self.root, text="Location")
         self.location_entry = tk.Entry(self.root)
 
-        # Show pose fields initially
-        self.pose_label.pack()
-        self.pose_entry.pack(pady=5)
+        # Show appropriate fields initially
+        self.update_fields(self.actions[0])
 
         # Create send button
         self.send_button = tk.Button(self.root, text="Send Action", command=self.send_action)
@@ -90,10 +206,12 @@ class RobotPositionSender(Node):
         self.root.mainloop()
 
     def update_fields(self, selected_action):
-        print("selected_action" + selected_action)
+        print("selected_action: " + selected_action)
         # Clear all fields
         self.pose_label.pack_forget()
         self.pose_entry.pack_forget()
+        self.waypoint_label.pack_forget()
+        self.waypoint_dropdown.pack_forget()
         self.material_label.pack_forget()
         self.material_entry.pack_forget()
         self.location_label.pack_forget()
@@ -101,26 +219,45 @@ class RobotPositionSender(Node):
 
         # Show relevant fields based on selected action
         if selected_action == "MoveTo":
-            self.pose_label.pack()
-            self.pose_entry.pack(pady=5)
+            if self.waypoints:
+                # Show waypoint dropdown if waypoints are available
+                self.waypoint_label.pack(pady=5)
+                self.waypoint_dropdown.pack(pady=5)
+            else:
+                # Show manual pose entry if no waypoints
+                self.pose_label.pack(pady=5)
+                self.pose_entry.pack(pady=5)
         else:
             self.material_label.pack(pady=5)
             self.material_entry.pack(pady=5)
             self.location_label.pack(pady=5)
             self.location_entry.pack(pady=5)
 
-
-
     def send_action(self):
-        selected_robot = int(self.robot_var.get())
+        selected_robot = self.robot_var.get()
         action = self.action_var.get()
 
         if action == "MoveTo":
-            pose_str = self.pose_entry.get()
-            # Parse pose string into position and orientation
-            pose_list = pose_str.split(',')
-            pose_position = [float(x) for x in pose_list[:2]]
-            pose_orientation_theta = float(pose_list[2])
+            if self.waypoints and self.waypoint_var.get() in self.waypoints:
+                # Use selected waypoint
+                waypoint_name = self.waypoint_var.get()
+                waypoint_data = self.waypoints[waypoint_name]
+                
+                pose_position = [waypoint_data['x'], waypoint_data['y']]
+                pose_orientation_theta = waypoint_data['yaw']
+                
+                self.info(f"Using waypoint '{waypoint_name}': x={waypoint_data['x']}, y={waypoint_data['y']}, yaw={waypoint_data['yaw']}")
+            else:
+                # Use manual pose entry
+                pose_str = self.pose_entry.get()
+                if not pose_str:
+                    self.error("No pose specified and no waypoints available")
+                    return
+                    
+                # Parse pose string into position and orientation
+                pose_list = pose_str.split(',')
+                pose_position = [float(x) for x in pose_list[:2]]
+                pose_orientation_theta = float(pose_list[2])
 
             # Convert theta to quaternion
             quaternion = euler_to_quaternion(0, 0, pose_orientation_theta)
@@ -132,74 +269,37 @@ class RobotPositionSender(Node):
             pose_msg.pose.position.x, pose_msg.pose.position.y = pose_position
             pose_msg.pose.orientation.x, pose_msg.pose.orientation.y, pose_msg.pose.orientation.z, pose_msg.pose.orientation.w = quaternion
 
-            self.goToPose(selected_robot,pose_msg)
-        elif action == "Load":
-            self.send_load_action(selected_robot)
-        elif action == "Dump":
-            self.send_dump_action(selected_robot)
-
+            self.goToPose(selected_robot, pose_msg)
 
         self.root.destroy()
         self.create_gui()
 
+    def goToPose(self, ID, pose, behavior_tree=''):
+        """Send a `NavToPose` action request."""
+        self.debug("Waiting for robot" + str(ID) + " 'NavigateToPose' action server")
+        navigate_to_pose_client = self._move_action_clients[ID]
+        if not navigate_to_pose_client.wait_for_server(timeout_sec=5.0):
+            self.info("'NavigateToPose' action server not available. The goal was not send...")
+            return False
 
-    def goToPose(self,ID, pose, behavior_tree=''):
-            """Send a `NavToPose` action request."""
-            self.debug("Waiting for robot" + str(ID) +" 'NavigateToPose' action server")
-            navigate_to_pose_client = self._move_action_clients[ID]
-            if not navigate_to_pose_client.wait_for_server(timeout_sec=5.0):
-                self.info("'NavigateToPose' action server not available. The goal was not send...")
-                return False
+        goal_msg = NavigateToPose.Goal()
+        goal_msg.pose = pose
+        goal_msg.behavior_tree = behavior_tree
 
-            goal_msg = NavigateToPose.Goal()
-            goal_msg.pose = pose
-            goal_msg.behavior_tree = behavior_tree
-
-            self.info('Robot' + str(ID) + ' navigating to goal: ' + str(pose.pose.position.x) + ' ' +
-                    str(pose.pose.position.y) + '...')
-            navigate_to_pose_client.send_goal_async(goal_msg,self.feedback_callback)
-            return True
+        self.info('Robot' + str(ID) + ' navigating to goal: ' + str(pose.pose.position.x) + ' ' +
+                str(pose.pose.position.y) + '...')
+        navigate_to_pose_client.send_goal_async(goal_msg, self.feedback_callback)
+        return True
 
     def feedback_callback(self, feedback_msg):
         self.get_logger().info('Feedback received: {0}'.format(feedback_msg.feedback.status))
 
-
-    def send_load_action(self, robot):
-        material = self.material_entry.get()
-        location = self.location_entry.get()
-        self.get_logger().info(f'Sending Load action to {robot} for material {material} at location {location}')
-        # Create and send Load action
-        send_load_to_pose_client = self._load_action_clients[robot]
-        if not send_load_to_pose_client.wait_for_server(timeout_sec=5.0):
-            self.info("'SendLoad' action server not available. The goal was not send...")
-            return False
-        # Create Load goal message
-        goal_msg = LoadMaterial.Goal()
-        goal_msg.location = location
-        goal_msg.name = material
-        send_load_to_pose_client.send_goal_async(goal_msg)
-
-    def send_dump_action(self, robot):
-        material = self.material_entry.get()
-        location = self.location_entry.get()
-        self.get_logger().info(f'Sending Dump action to {robot} for material {material} at location {location}')
-        send_dump_to_pose_client = self._dump_action_clients[robot]
-        # Create and send Load action
-        if not send_dump_to_pose_client.wait_for_server(timeout_sec=5.0):
-            self.info("'SendDump' action server not available. The goal was not send...")
-            return False
-        # Create Load goal message
-        goal_msg = DumpMaterial.Goal()
-        goal_msg.location = location
-        goal_msg.name = material
-        send_dump_to_pose_client.send_goal_async(goal_msg)
 
 def main(args=None):
     rclpy.init(args=args)
     robot_position_sender = RobotPositionSender()
     rclpy.spin(robot_position_sender)
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

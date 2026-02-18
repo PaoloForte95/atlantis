@@ -18,6 +18,7 @@
 #include <material_handler_msgs/msg/material_flow.hpp>
 #include <location_msgs/srv/get_waypoint_list.hpp>
 #include <location_msgs/msg/waypoint.hpp>
+#include <location_msgs/msg/waypoint_array.hpp>
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 using GoalHandleNavigatetoPose = rclcpp_action::ServerGoalHandle<nav2_msgs::action::NavigateToPose>;
 using GoalHandleLoadCommand = rclcpp_action::ServerGoalHandle<material_handler_msgs::action::LoadMaterial>;
@@ -129,6 +130,7 @@ class BaseSimulator : public rclcpp_lifecycle::LifecycleNode{
         //Pubs
         rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::OccupancyGrid>::SharedPtr map_pub_;
         rclcpp_lifecycle::LifecyclePublisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub_;
+        rclcpp_lifecycle::LifecyclePublisher<location_msgs::msg::WaypointArray>::SharedPtr waypoints_pub_;
         std::map< std::string,rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>::SharedPtr> robots_current_pose_;
         std::map< std::string,rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr> robots_paths_;
         std::map< std::string,rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::Int64>::SharedPtr> current_path_idx_pubs_;
