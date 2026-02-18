@@ -25,6 +25,7 @@ RUN echo "source /opt/ros/jazzy/setup.bash" >> /home/$USERNAME/.bashrc
 WORKDIR /home/$USERNAME/ws/src
 RUN git clone https://github.com/PaoloForte95/navigo.git
 RUN git clone https://github.com/PaoloForte95/common_interfaces.git
+RUN git clone https://gitsvn-nt.oru.se/pofe/atlantis_collection.git
 WORKDIR /home/$USERNAME/ws
 SHELL ["/bin/bash", "-c"]
 RUN source /opt/ros/jazzy/setup.bash && colcon build --packages-select navigo location_msgs material_handler_msgs object_detection_msgs standard_msgs
