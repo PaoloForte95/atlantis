@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-ament-cmake \
     ros-jazzy-navigation2 \
     ros-jazzy-nav2-bringup \
+    ros-jazzy-rviz2 \
     && useradd -m -s /bin/bash $USERNAME \
     && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
@@ -39,6 +40,8 @@ WORKDIR /home/$USERNAME/ws
 RUN source /home/$USERNAME/ws/install/setup.bash && colcon build --packages-up-to atlantis && source /home/$USERNAME/ws/install/setup.bash
 
 WORKDIR /home/$USERNAME/ws
+SHELL ["/bin/bash", "-c"]
+RUN sudo apt-get update
 
 USER $USERNAME
 
