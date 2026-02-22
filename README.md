@@ -16,30 +16,44 @@ Atlantis can be used to test different applications domains including:
 2. Manipulation
 3. Navigation
 
+
+There are two different ways to use Atlantis, source installation or docker image.
+
 <h1 align="center">Docker Installation</h1>
+
+First, install [Docker](https://www.docker.com/) following the instructions provided at this [link](https://docs.docker.com/engine/install/).
 
 To build the docker image, run
 ```
 cd <path/to/atlantis>
-docker build -t atlantis_image .
+docker build --pull --rm -f 'src/atlantis/Dockerfile' -t 'atlantisws:latest' 'src/atlantis'
 ```
 To allow GUI, run:
 ```
 xhost +local:docker
 ```
-
-To run:
+To run the docker image:
 ```
-docker run -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix atlantis_image
+docker run -it --rm \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v $(pwd):/home/milo/ws/src/atlantis \
+  atlantisws:latest
 ```
 
 Then you can skip to the Running section
 
-<h1 align="center">Dependencies</h1>
+<h1 align="center">Source Installation</h1>
 
-# ROS2 
-Install [ROS2](https://docs.ros.org/#ros-for-beginners) Jazzy following the instruction provided at this [link](https://docs.ros.org/en/jazzy/).
+Start by installing the dependencies.
 
+# ROS2 and Rviz2
+Install [ROS2](https://docs.ros.org/#ros-for-beginners) Jazzy following the instruction provided at this [link](https://docs.ros.org/en/jazzy/). 
+
+Install [Rviz2](https://github.com/ros2/rviz) by running the command:
+```
+sudo apt install ros-<ros2-distro>-rviz2
+```
 # Navigation 2
 Install [Nav2](https://docs.nav2.org/getting_started/index.html#installation) by running the command:
 
