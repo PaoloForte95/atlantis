@@ -25,8 +25,8 @@ int main(int argc, char ** argv)
   
   auto node = std::make_shared<atlantis_simulator::DiscreteEventSimulator>("atlantis_discrete_event_simulator");
   rclcpp_lifecycle::State state;
-  node->on_activate(state);
   node->on_configure(state);
+  node->on_activate(state);
   rclcpp::spin(node->get_node_base_interface());
   rclcpp::shutdown();
 

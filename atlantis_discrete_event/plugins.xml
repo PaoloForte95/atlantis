@@ -1,0 +1,33 @@
+<library path="discrete_event_plugins">
+
+  <!-- Action plugins -->
+  <class
+    name="atlantis_simulator::MoveActionPlugin"
+    type="atlantis_simulator::MoveActionPlugin"
+    base_class_type="atlantis_core::ActionPlugin">
+    <description>Discrete event implementation of the move action.</description>
+  </class>
+
+  <class
+    name="atlantis_simulator::LoadActionPlugin"
+    type="atlantis_simulator::LoadActionPlugin"
+    base_class_type="atlantis_core::ActionPlugin">
+    <description>Discrete event implementation of the load action.</description>
+  </class>
+
+  <class
+    name="atlantis_simulator::DumpActionPlugin"
+    type="atlantis_simulator::DumpActionPlugin"
+    base_class_type="atlantis_core::ActionPlugin">
+    <description>Discrete event implementation of the dump action.</description>
+  </class>
+
+  <!-- Service plugins -->
+  <class
+    name="atlantis_simulator::MaterialAmountServicePlugin"
+    type="atlantis_simulator::MaterialAmountServicePlugin"
+    base_class_type="atlantis_core::ServicePlugin">
+    <description>Service that returns the amount of a material at a location.</description>
+  </class>
+
+</library>
