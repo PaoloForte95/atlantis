@@ -2,31 +2,36 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>atlantis_base</name>
-  <version>0.0.1</version>
-  <description>The base simulator package</description>
-  <maintainer email="paolo.forte@oru.se">pofe</maintainer>
-  <license>GPL-3.0-only</license>
+  <version>0.1.0</version>
+  <description>
+    Base layer of the Atlantis simulator. Inherits from SimulatorCore
+    and provides plugin implementations of move, load, dump, and
+    related services that use real path planning.
+  </description>
+
+  <maintainer email="you@example.com">Atlantis Maintainer</maintainer>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>atlantis_core</depend>
+  <depend>atlantis_util</depend>
+  <depend>pluginlib</depend>
   <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
+  <depend>rclcpp_lifecycle</depend>
   <depend>visualization_msgs</depend>
+  <depend>nav2_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>navigo</depend>
-  <depend>geometry_msgs</depend> 
-  <depend>sensor_msgs</depend> 
-  <depend>eigen_conversions</depend>
-  <depend>atlantis_util</depend>
   <depend>material_handler_msgs</depend>
   <depend>location_msgs</depend>
-  <depend>standard_msgs</depend>
-  
-  <exec_depend>ros2launch</exec_depend>	
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-  <test_depend>ament_cmake_gtest</test_depend>
-  <test_depend>ament_cmake_pytest</test_depend>
+  <depend>ament_index_cpp</depend>
+  <depend>yaml-cpp</depend>
+  <depend>atlantis_utils</depend>
+
   <export>
     <build_type>ament_cmake</build_type>
+    <atlantis_core plugin="${prefix}/plugins.xml" />
   </export>
 </package>

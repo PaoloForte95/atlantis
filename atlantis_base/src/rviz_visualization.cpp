@@ -109,7 +109,7 @@ void RvizVisualization::publishRobot(int ID, double x, double y, double theta,st
         marker.pose.position.x = x; 
         marker.pose.position.y = y; 
         marker.pose.position.z = 0.0;  // 
-        auto quat = atlantis::util::eulerToQuaternion(0.,0.,theta);
+        auto quat = atlantis::util::rpyToQuaternion(0.,0.,theta);
         marker.pose.orientation.w = quat.w(); 
         marker.pose.orientation.x = quat.x();  
         marker.pose.orientation.y = quat.y();  
@@ -210,7 +210,7 @@ void RvizVisualization::publishRobot(int ID, double x, double y, double theta,st
   marker.ns = "footprint" + std::to_string (id);
   marker.id = id;
   marker.header.frame_id = frame_id;
-  auto quat = atlantis::util::eulerToQuaternion(0.,0.,theta);
+  auto quat = atlantis::util::rpyToQuaternion(0.,0.,theta);
   marker.pose.orientation.w = quat.w(); 
   marker.pose.orientation.x = quat.x();  
   marker.pose.orientation.y = quat.y();  

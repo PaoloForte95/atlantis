@@ -23,10 +23,10 @@ int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
   
-  auto node = std::make_shared<atlantis::BaseSimulator>("atlantis_base_simulator");
+  auto node = std::make_shared<atlantis_base::BaseSimulator>("atlantis_base_simulator");
   rclcpp_lifecycle::State state;
-  node->on_activate(state);
   node->on_configure(state);
+  node->on_activate(state);
   rclcpp::spin(node->get_node_base_interface());
   rclcpp::shutdown();
 

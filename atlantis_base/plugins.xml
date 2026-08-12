@@ -1,0 +1,38 @@
+<library path="atlantis_base_plugins">
+
+  <class
+    name="atlantis_base::MoveActionPlugin"
+    type="atlantis_base::MoveActionPlugin"
+    base_class_type="atlantis_core::ActionPlugin">
+    <description>Base layer move action with real path planning.</description>
+  </class>
+
+  <class
+    name="atlantis_base::LoadActionPlugin"
+    type="atlantis_base::LoadActionPlugin"
+    base_class_type="atlantis_core::ActionPlugin">
+    <description>Base layer load action.</description>
+  </class>
+
+  <class
+    name="atlantis_base::DumpActionPlugin"
+    type="atlantis_base::DumpActionPlugin"
+    base_class_type="atlantis_core::ActionPlugin">
+    <description>Base layer dump action.</description>
+  </class>
+
+  <class
+    name="atlantis_base::MaterialAmountServicePlugin"
+    type="atlantis_base::MaterialAmountServicePlugin"
+    base_class_type="atlantis_core::ServicePlugin">
+    <description>Material amount lookup service.</description>
+  </class>
+
+  <class
+    name="atlantis_base::WaypointListServicePlugin"
+    type="atlantis_base::WaypointListServicePlugin"
+    base_class_type="atlantis_core::ServicePlugin">
+    <description>Returns the list of waypoints.</description>
+  </class>
+
+</library>
