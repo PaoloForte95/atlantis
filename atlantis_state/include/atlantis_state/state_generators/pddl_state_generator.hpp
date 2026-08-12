@@ -11,6 +11,7 @@
 #include <location_msgs/msg/waypoint_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include "atlantis_core/types.hpp"
 #include "atlantis_util/utils.h"
 namespace atlantis_state
 {
@@ -65,6 +66,9 @@ private:
 
   void waypointArrayCallback(location_msgs::msg::WaypointArray msg);
 
+
+  atlantis_core::Waypoint findNearestWaypoint(double x, double y, double theta);
+
 protected:
   /**
    * @brief Callback executed when a paramter change is detected
@@ -79,7 +83,7 @@ protected:
   std::string  name_;
   std::mutex  mutex_;
   std::vector<std::string> robots_ids_;
-  std::vector<atlantis::util::Waypoint> waypoints_;
+  std::vector<atlantis_core::Waypoint> waypoints_;
   standard_msgs::msg::StringMultiArray atlantis_state_;
 
   //Subs

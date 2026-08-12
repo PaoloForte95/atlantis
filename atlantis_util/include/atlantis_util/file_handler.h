@@ -26,8 +26,6 @@ void appendRowToCSV(const std::string& filename,
                     const std::vector<std::string>& metrics);
 
 
-std::vector<Waypoint> parseWaypoints(std::string file_path);
-
 std::string resolve_pkg_uri(const std::string& uri);
 
 }

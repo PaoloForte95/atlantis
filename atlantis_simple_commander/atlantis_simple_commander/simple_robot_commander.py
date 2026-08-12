@@ -286,7 +286,7 @@ class RobotPositionSender(Node):
         goal_msg.pose = pose
         goal_msg.behavior_tree = behavior_tree
 
-        self.info('Robot' + str(ID) + ' navigating to goal: ' + str(pose.pose.position.x) + ' ' +
+        self.info('Robot ' + str(ID) + ' navigating to goal: ' + str(pose.pose.position.x) + ' ' +
                 str(pose.pose.position.y) + '...')
         navigate_to_pose_client.send_goal_async(goal_msg, self.feedback_callback)
         return True

@@ -13,6 +13,7 @@ find_package(location_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(atlantis_util REQUIRED)
+find_package(atlantis_core REQUIRED)
 
 set(dependencies
   rclcpp
@@ -23,6 +24,7 @@ set(dependencies
   location_msgs
   geometry_msgs
   atlantis_util
+  atlantis_core
   Eigen3
 )
 

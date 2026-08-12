@@ -93,69 +93,6 @@ void appendRowToCSV(const std::string& filename,
 
 
 
-std::vector<Waypoint> parseWaypoints(std::string file_path) {
-    std::vector<Waypoint> waypoints;
-    std::ifstream file(file_path);
-    
-    if (!file.is_open()) {
-        std::cerr << "Could not open file " << file_path << std::endl;
-        return waypoints;
-    }
-    
-    std::cout << "Loading waypoints from file " << file_path << std::endl;
-    
-    std::string line;
-    Waypoint waypoint;
-    bool readingWaypoint = false;
-    
-    while (std::getline(file, line)) {
-        // Remove leading/trailing spaces
-        line.erase(0, line.find_first_not_of(" \t"));
-        line.erase(line.find_last_not_of(" \t") + 1);
-        
-        if (line.empty()) continue;
-        
-        if (line.back() == ':') { // Start of a new waypoint
-            if (readingWaypoint) {
-                waypoints.push_back(waypoint);
-            }
-            waypoint = Waypoint(); // Reset waypoint struct
-            waypoint.name = line.substr(0, line.size() - 1);
-            readingWaypoint = true;
-        } else if (readingWaypoint) {
-            std::istringstream iss(line);
-            std::string key;
-            double value;
-            
-            if (std::getline(iss, key, ':')) {
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                
-                if (iss >> value) {
-                    if (key == "x") waypoint.x = value;
-                    else if (key == "y") waypoint.y = value;
-                    //else if (key == "z") waypoint.z = value;
-                    else if (key == "yaw") waypoint.theta = value;
-                }
-            }
-        }
-    }
-    
-    if (readingWaypoint) {
-        waypoints.push_back(waypoint);
-    }
-    
-    file.close();
-    
-    for (const auto& wp : waypoints) {
-        std::cout << "Loaded waypoint " << wp.name << " : (" 
-                  << wp.x << ", " << wp.y << ", " << wp.theta << ")" << std::endl;
-    }
-    
-    return waypoints;
-}
-
-
 std::string resolve_pkg_uri(const std::string& uri)
 {
     const std::string prefix = "package://";
@@ -171,53 +108,5 @@ std::string resolve_pkg_uri(const std::string& uri)
     return share + "/" + rel;
 }
 
-// std::vector<Waypoint> parseWaypoints(std::string file_path){
-//   std::vector<Waypoint> waypoints;
-//     std::ifstream file(file_path);
-//     if (!file.is_open()) {
-//       std::cerr << "Could not open file " << file_path.c_str() << std::endl;
-//       return waypoints;
-//     }
-//     std::cout << "Loading waypoints from file " << file_path.c_str() << std::endl;
-//     std::string line;
-//     // Parse each line for waypoints in the format "name: (x, y, theta)"
-//     while (std::getline(file, line)) {
-//       std::string name, point;
-//       std::string delimiter = ":";
-//       name = line.substr(0,line.find(delimiter));
-//       name.erase(std::remove_if(name.begin(), name.end(), ::isspace), name.end());
-//       point = line.substr(line.find(delimiter)+1);
-//       point.erase(std::remove_if(point.begin(), point.end(), [](char c) {
-//         return c == '(' || c == ')' || std::isspace(c);
-//       }), point.end());
-
-//       double components[3];
-//       size_t pos = 0;
-//       for (int i = 0; i < 3; ++i) {
-//         // Find the position of the comma from the current 'pos'
-//         size_t commaPos = point.find(',', pos);
-
-//         if (commaPos != std::string::npos) {
-//             std::string value = point.substr(pos, commaPos - pos);
-//             components[i] = std::stod(value);
-//             pos = commaPos + 1; // Move 'pos' to the character after the comma
-//         } else {
-//             // For the last component (theta), use the remaining string
-//             std::string value = point.substr(pos);
-//             components[i] = std::stod(value);
-//         }
-//     }
-//       Waypoint waypoint;
-//       waypoint.x = components[0];
-//       waypoint.y = components[1];
-//       waypoint.theta = components[2];
-//       waypoint.name = name;
-//       waypoints.push_back(waypoint); 
-//       std::cout << "Loaded waypoint " << name.c_str() << " :(" << components[0] << ", " << components[1] << ", " << components[2] << ")" <<  std::endl;
-//     }
-//     // Close the input file
-//     file.close();
-//     return waypoints;
-// }
 }
 }

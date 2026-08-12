@@ -28,8 +28,9 @@ include_directories(
 
 add_library(atlantis_util SHARED
   src/file_handler.cpp
+  src/utils.cpp
 )
-ament_target_dependencies(atlantis_util ${dependencies})
+
 
 
 install(
@@ -47,4 +48,5 @@ install(DIRECTORY include/
 
 ament_export_include_directories(include)
 ament_export_libraries(atlantis_util)
+ament_target_dependencies(atlantis_util ${dependencies})
 ament_package()

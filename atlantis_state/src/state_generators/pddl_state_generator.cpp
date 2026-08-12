@@ -87,24 +87,31 @@ standard_msgs::msg::StringMultiArray PddlStateGenerator::generateState()
 }
 
 
-void PddlStateGenerator::currentPoseCallback(geometry_msgs::msg::PoseStamped msg, int robotID)
-{
-    atlantis::util::Waypoint nearest = atlantis::util::getNearestWaypoint(waypoints_, msg.pose.position.x, msg.pose.position.y);
-    const std::string prefix = "(at rb" + std::to_string(robotID) + " ";
-    const std::string new_state = "(at rb" + std::to_string(robotID) + " " + nearest.name + ")";
+void PddlStateGenerator::currentPoseCallback(geometry_msgs::msg::PoseStamped msg, int robotID){
 
-    // if already present → do nothing
-    auto it = std::find(atlantis_state_.data.begin(),
-                      atlantis_state_.data.end(),
-                      new_state);
-    if (it == atlantis_state_.data.end()) {
-      // remove any existing "(at rb<robotID> ...)"
-      atlantis_state_.data.erase(std::remove_if(atlantis_state_.data.begin(), atlantis_state_.data.end(),
-                                                [&](const std::string& s) { return s.rfind(prefix, 0) == 0;}),atlantis_state_.data.end());
+  Eigen::Quaterniond quaternion;
+  quaternion.x() = msg.pose.orientation.x;
+  quaternion.y() = msg.pose.orientation.y;
+  quaternion.z() = msg.pose.orientation.z;
+  quaternion.w() = msg.pose.orientation.w;
+  auto rpy = atlantis::util::quaternionToEulerAngles(quaternion);
+  auto theta = rpy[2]; // Yaw
+  auto nearest = findNearestWaypoint(msg.pose.position.x, msg.pose.position.y, theta);
+  const std::string prefix = "(at rb" + std::to_string(robotID) + " ";
+  const std::string new_state = "(at rb" + std::to_string(robotID) + " " + nearest.name + ")";
 
-      // add the new one
-      atlantis_state_.data.push_back(new_state);
-    }
+  // if already present → do nothing
+  auto it = std::find(atlantis_state_.data.begin(),
+                    atlantis_state_.data.end(),
+                    new_state);
+  if (it == atlantis_state_.data.end()) {
+    // remove any existing "(at rb<robotID> ...)"
+    atlantis_state_.data.erase(std::remove_if(atlantis_state_.data.begin(), atlantis_state_.data.end(),
+                                              [&](const std::string& s) { return s.rfind(prefix, 0) == 0;}),atlantis_state_.data.end());
+
+    // add the new one
+    atlantis_state_.data.push_back(new_state);
+  }
 
 }
 
@@ -112,13 +119,33 @@ void PddlStateGenerator::waypointArrayCallback(location_msgs::msg::WaypointArray
 {
     RCLCPP_INFO(logger_, "Received waypoint array for robot");
     for (auto wp: msg.waypoints){
-        atlantis::util::Waypoint waypoint;
+        atlantis_core::Waypoint waypoint;
         waypoint.name = wp.name;
         waypoint.x = wp.pose.position.x;
         waypoint.y = wp.pose.position.y;
         waypoints_.push_back(waypoint);
     }
     
+}
+
+atlantis_core::Waypoint PddlStateGenerator::findNearestWaypoint(double x, double y, double theta)
+{
+    double best_distance = std::numeric_limits<double>::max();
+    atlantis_core::Waypoint best_match;
+
+    for (const auto & wp : waypoints_) {
+        double dx = x - wp.x;
+        double dy = y - wp.y;
+        double distance = std::sqrt(dx * dx + dy * dy);
+        double dtheta = std::fabs(theta - wp.theta);
+        if ((distance + dtheta) <= best_distance) {
+            best_distance = distance;
+            best_match = wp;
+        }
+    }
+
+    //RCLCPP_INFO(logger_, "Nearest waypoint: %s (x=%f, y=%f)", best_match.name.c_str(), best_match.x, best_match.y);
+    return best_match;
 }
 
 rcl_interfaces::msg::SetParametersResult
