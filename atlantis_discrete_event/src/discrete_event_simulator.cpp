@@ -13,9 +13,6 @@ DiscreteEventSimulator::DiscreteEventSimulator(
 {
 }
 
-// The defaults are empty because the YAML file describes what instances
-// to create. If the user provides no YAML, the simulator simply runs with
-// no actions or services, which is a safe and obvious failure mode.
 std::vector<std::string> DiscreteEventSimulator::defaultActions() const
 {
   return {};
