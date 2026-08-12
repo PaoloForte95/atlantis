@@ -19,6 +19,7 @@
   <depend>pluginlib</depend>
   <depend>std_msgs</depend>
   <depend>location_msgs</depend>
+  <depend>atlantis_util</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

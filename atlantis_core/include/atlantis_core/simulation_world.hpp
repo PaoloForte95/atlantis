@@ -1,9 +1,3 @@
-// Copyright 2026 Atlantis
-//
-// Shared simulation state: robots, materials, waypoints.
-// Every plugin reads and writes the world through this class.
-// All public methods are thread safe.
-
 #ifndef ATLANTIS_CORE__SIMULATION_WORLD_HPP_
 #define ATLANTIS_CORE__SIMULATION_WORLD_HPP_
 
@@ -26,8 +20,9 @@ public:
   // ---- Robots ----
   void addRobot(const RobotState & robot);
   bool hasRobot(const std::string & name) const;
-  std::string getRobotLocation(const std::string & name) const;
-  void setRobotLocation(const std::string & name, const std::string & location);
+  Waypoint getRobotLocation(const std::string & name) const;
+  RobotState getRobotInfo(const std::string & name) const;
+  void setRobotLocation(const std::string & name, const Waypoint & location);
   double getCapacity(const std::string & name) const;
   double getLoadedAmount(const std::string & name) const;
   void setLoadedAmount(const std::string & name, double amount);
@@ -43,7 +38,7 @@ public:
   // ---- Waypoints ----
   void addWaypoint(const Waypoint & waypoint);
   std::vector<Waypoint> getWaypoints() const;
-  std::string findWaypoint(double x, double y, double theta, double tolerance = 0.1) const;
+  Waypoint findWaypoint(double x, double y, double theta) const;
 
 private:
   mutable std::mutex mutex_;
@@ -52,6 +47,6 @@ private:
   std::vector<Waypoint> waypoints_;
 };
 
-}  // namespace atlantis_core
+} 
 
-#endif  // ATLANTIS_CORE__SIMULATION_WORLD_HPP_
+#endif  

@@ -1,5 +1,3 @@
-// Copyright 2026 Atlantis
-
 #ifndef ATLANTIS_CORE__ACTION_PLUGIN_HPP_
 #define ATLANTIS_CORE__ACTION_PLUGIN_HPP_
 

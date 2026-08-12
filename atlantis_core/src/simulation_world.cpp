@@ -21,17 +21,17 @@ bool SimulationWorld::hasRobot(const std::string & name) const
   return robots_.find(name) != robots_.end();
 }
 
-std::string SimulationWorld::getRobotLocation(const std::string & name) const
+Waypoint SimulationWorld::getRobotLocation(const std::string & name) const
 {
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = robots_.find(name);
   if (it == robots_.end()) {
-    return "";
+    throw std::out_of_range("Robot not found: " + name);
   }
   return it->second.current_location;
 }
 
-void SimulationWorld::setRobotLocation(const std::string & name, const std::string & location)
+void SimulationWorld::setRobotLocation(const std::string & name, const Waypoint & location)
 {
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = robots_.find(name);
@@ -40,12 +40,22 @@ void SimulationWorld::setRobotLocation(const std::string & name, const std::stri
   }
 }
 
+RobotState SimulationWorld::getRobotInfo(const std::string & name) const
+{
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = robots_.find(name);
+  if (it == robots_.end()) {
+    throw std::out_of_range("Robot not found: " + name);
+  }
+  return it->second;
+}
+
 double SimulationWorld::getCapacity(const std::string & name) const
 {
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = robots_.find(name);
   if (it == robots_.end()) {
-    return 0.0;
+    throw std::out_of_range("Robot not found: " + name);
   }
   return it->second.capacity;
 }
@@ -55,7 +65,7 @@ double SimulationWorld::getLoadedAmount(const std::string & name) const
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = robots_.find(name);
   if (it == robots_.end()) {
-    return -1.0;
+    throw std::out_of_range("Robot not found: " + name);
   }
   return it->second.loaded_amount;
 }
@@ -64,9 +74,10 @@ void SimulationWorld::setLoadedAmount(const std::string & name, double amount)
 {
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = robots_.find(name);
-  if (it != robots_.end()) {
-    it->second.loaded_amount = amount;
+  if (it == robots_.end()) {
+    throw std::out_of_range("Robot not found: " + name);
   }
+  it->second.loaded_amount = amount;
 }
 
 void SimulationWorld::addMaterial(const Material & material)
@@ -82,10 +93,14 @@ double SimulationWorld::getMaterialAmount(
   std::lock_guard<std::mutex> lock(mutex_);
   for (const auto & mat : materials_) {
     if (mat.name == material_name) {
-      return mat.getAmount(location);
+      auto it = mat.amounts.find(location);
+      if (it == mat.amounts.end()) {
+        return 0.0;
+      }
+      return it->second;
     }
   }
-  return -1.0;
+  throw std::out_of_range("Material not found: " + material_name);
 }
 
 void SimulationWorld::setMaterialAmount(
@@ -94,12 +109,16 @@ void SimulationWorld::setMaterialAmount(
   double amount)
 {
   std::lock_guard<std::mutex> lock(mutex_);
-  for (auto & mat : materials_) {
-    if (mat.name == material_name) {
-      mat.setAmount(location, amount);
-      return;
-    }
+  auto it = std::find_if(
+    materials_.begin(), materials_.end(),
+    [&material_name](const Material & mat) {
+      return mat.name == material_name;
+    });
+
+  if (it == materials_.end()) {
+    throw std::out_of_range("Material not found: " + material_name);
   }
+  it->setAmount(location, amount);
 }
 
 void SimulationWorld::addWaypoint(const Waypoint & waypoint)
@@ -114,19 +133,27 @@ std::vector<Waypoint> SimulationWorld::getWaypoints() const
   return waypoints_;
 }
 
-std::string SimulationWorld::findWaypoint(
-  double x, double y, double theta, double tolerance) const
+Waypoint SimulationWorld::findWaypoint(
+  double x, double y, double theta) const
 {
   std::lock_guard<std::mutex> lock(mutex_);
+  Waypoint best_match;
+
+  double best_distance = std::numeric_limits<double>::max();
   for (const auto & wp : waypoints_) {
     double dx = x - wp.x;
     double dy = y - wp.y;
     double distance = std::sqrt(dx * dx + dy * dy);
-    if (distance <= tolerance && std::abs(theta - wp.theta) <= tolerance) {
-      return wp.name;
+    double dtheta = std::fabs(theta - wp.theta);
+    if ((distance + dtheta) <= best_distance) {
+      best_distance = distance;
+      best_match.name = wp.name;
+      best_match.x = wp.x;
+      best_match.y = wp.y;
+      best_match.theta = wp.theta;
     }
   }
-  return "-1";
+  return best_match;
 }
 
 }  // namespace atlantis_core

@@ -30,14 +30,32 @@ SimulatorCore::~SimulatorCore()
   }
 }
 
+
+std::vector<Waypoint> SimulatorCore::loadWaypointsFromFile(const std::string & file_path)
+{
+  YAML::Node root = YAML::LoadFile(file_path);
+  std::vector<Waypoint> waypoints;
+  for (const auto & entry : root) {
+    Waypoint wp;
+    wp.name = entry.first.as<std::string>();
+    wp.x = entry.second["x"].as<double>();
+    wp.y = entry.second["y"].as<double>();
+    wp.theta = entry.second["yaw"].as<double>();
+    waypoints.push_back(wp);
+  }
+  return waypoints;
+}
+
 void SimulatorCore::loadCommonParameters()
 {
   std::vector<std::string> default_ids;
+  std::string default_path;
   metrics_ = {"execution_time", "action_time"};
 
   declare_parameter("robots", default_ids);
   declare_parameter("materials", default_ids);
   declare_parameter("waypoints", default_ids);
+  declare_parameter("waypoints_file", default_path);
   declare_parameter("actions", defaultActions());
   declare_parameter("services", defaultServices());
   declare_parameter("metrics", metrics_);
@@ -45,6 +63,7 @@ void SimulatorCore::loadCommonParameters()
   get_parameter("robots", robots_ids_);
   get_parameter("materials", materials_ids_);
   get_parameter("waypoints", waypoints_ids_);
+  get_parameter("waypoints_file", waypoints_path_);
   get_parameter("actions", action_names_);
   get_parameter("services", service_names_);
 
@@ -65,24 +84,39 @@ void SimulatorCore::loadCommonParameters()
 void SimulatorCore::buildWorld()
 {
   world_ = std::make_shared<SimulationWorld>();
-
-  // Waypoints
-  for (const auto & wp_name : waypoints_ids_) {
-    Waypoint wp;
-    wp.name = wp_name;
-
-    declare_parameter(wp_name + ".x", 0.0);
-    declare_parameter(wp_name + ".y", 0.0);
-    declare_parameter(wp_name + ".yaw", 0.0);
-    get_parameter(wp_name + ".x", wp.x);
-    get_parameter(wp_name + ".y", wp.y);
-    get_parameter(wp_name + ".yaw", wp.theta);
-
-    world_->addWaypoint(wp);
-    RCLCPP_INFO(
-      get_logger(), "Added waypoint %s at (%f, %f, %f)",
-      wp_name.c_str(), wp.x, wp.y, wp.theta);
+  
+  if(!waypoints_path_.empty()) {
+    auto file = atlantis::util::resolve_pkg_uri(waypoints_path_);
+    RCLCPP_INFO(get_logger(), "Loading waypoints from %s", file.c_str()); 
+    auto waypoints = loadWaypointsFromFile(file);
+    for (const auto & wp : waypoints) {
+      world_->addWaypoint(wp);
+      RCLCPP_INFO(get_logger(), "Added waypoint %s at (%f, %f, %f)",
+        wp.name.c_str(), wp.x, wp.y, wp.theta);
+    }
   }
+  else{
+    // Waypoints
+    for (const auto & wp_name : waypoints_ids_) {
+      Waypoint wp;
+      wp.name = wp_name;
+
+      declare_parameter(wp_name + ".x", 0.0);
+      declare_parameter(wp_name + ".y", 0.0);
+      declare_parameter(wp_name + ".yaw", 0.0);
+      get_parameter(wp_name + ".x", wp.x);
+      get_parameter(wp_name + ".y", wp.y);
+      get_parameter(wp_name + ".yaw", wp.theta);
+
+      world_->addWaypoint(wp);
+      RCLCPP_INFO(
+        get_logger(), "Added waypoint %s at (%f, %f, %f)",
+        wp_name.c_str(), wp.x, wp.y, wp.theta);
+    }
+
+  }
+
+
 
   // Materials
   std::vector<std::string> material_locs;
@@ -110,22 +144,39 @@ void SimulatorCore::buildWorld()
 
   // Robots
   for (const auto & name : robots_ids_) {
-    std::string start_location;
-    double capacity = 0.0;
-    declare_parameter(name + ".start_location", "home");
+    Waypoint start_location;
+    std::string empty, type;
+    std::string model, footprint_points;
+    double capacity, minimum_turning_radius;
+    declare_parameter(name+".initial_pose.x", 0.0);
+    declare_parameter(name+".initial_pose.y", 0.0);
+    declare_parameter(name+".initial_pose.theta", 0.0);
+    declare_parameter(name+".minimum_turning_radius", 0.0);
+    declare_parameter(name+".footprint", empty);
+    declare_parameter(name + ".model", empty);
+    declare_parameter(name + ".type", empty);
     declare_parameter(name + ".capacity", 0.0);
-    get_parameter(name + ".start_location", start_location);
+
+    get_parameter(name + ".initial_pose.x", start_location.x);
+    get_parameter(name + ".initial_pose.y", start_location.y);
+    get_parameter(name + ".initial_pose.theta", start_location.theta);
+    get_parameter(name + ".footprint", footprint_points);
     get_parameter(name + ".capacity", capacity);
+    get_parameter(name + ".model", model);
+    get_parameter(name + ".type", type);
+    get_parameter(name + ".minimum_turning_radius", minimum_turning_radius);
 
     RobotState robot;
     robot.name = name;
     robot.current_location = start_location;
+    robot.type = type;
     robot.capacity = capacity;
+    robot.model = model;
+    robot.loaded_amount = 0.0;
+    robot.minimum_turning_radius = minimum_turning_radius;
     world_->addRobot(robot);
 
-    RCLCPP_INFO(
-      get_logger(), "Robot %s starts at %s with capacity %f",
-      name.c_str(), start_location.c_str(), capacity);
+    RCLCPP_INFO(get_logger(), "Robot %s starts at (%f, %f, %f)",name.c_str(), start_location.x, start_location.y, start_location.theta);
   }
 }
 
@@ -141,8 +192,12 @@ void SimulatorCore::loadActions()
       config.name = robot + "." + action;
 
       std::string topic_suffix;
-      declare_parameter(action + ".type", std::string(""));
-      declare_parameter(action + ".topic", std::string(""));
+      if (!has_parameter(action + ".type")) {
+        declare_parameter(action + ".type", std::string(""));
+      }
+      if (!has_parameter(action + ".topic")) {
+        declare_parameter(action + ".topic", std::string(""));
+      }
       get_parameter(action + ".type", config.type);
       get_parameter(action + ".topic", topic_suffix);
 
@@ -195,8 +250,12 @@ void SimulatorCore::loadServices()
       config.name = robot + "." + service;
 
       std::string topic_suffix;
-      declare_parameter(service + ".type", std::string(""));
-      declare_parameter(service + ".topic", std::string(""));
+      if (!has_parameter(service + ".type")) {
+        declare_parameter(service + ".type", std::string(""));
+      }
+      if (!has_parameter(service + ".topic")) {
+        declare_parameter(service + ".topic", std::string(""));
+      }
       get_parameter(service + ".type", config.type);
       get_parameter(service + ".topic", topic_suffix);
 

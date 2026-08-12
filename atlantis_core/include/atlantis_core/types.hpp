@@ -43,13 +43,22 @@ struct Material
   }
 };
 
-/// The state of a single robot.
+// The state of a single robot.
 struct RobotState
 {
   std::string name;
-  std::string current_location;
-  double capacity{0.0};
-  double loaded_amount{-1.0};
+  std::string type;
+  Waypoint current_location;
+
+  //Planner
+  double minimum_turning_radius;
+  std::string model;
+  std::string footprint;
+  std::string planner;
+
+  //Capacity
+  double loaded_amount;
+  double capacity;
 };
 
 }  // namespace atlantis_core

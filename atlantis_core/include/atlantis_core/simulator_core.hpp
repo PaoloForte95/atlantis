@@ -6,6 +6,7 @@
 #include <atlantis_core/action_plugin.hpp>
 #include <atlantis_core/service_plugin.hpp>
 #include <atlantis_core/simulation_world.hpp>
+#include <atlantis_util/file_handler.h>
 
 #include <location_msgs/msg/waypoint_array.hpp>
 #include <pluginlib/class_loader.hpp>
@@ -16,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <yaml-cpp/yaml.h>
 
 namespace atlantis_core
 {
@@ -59,8 +61,10 @@ private:
   void loadActions();
   void loadServices();
   void setupMetrics();
+  std::vector<Waypoint> loadWaypointsFromFile(const std::string & file_path);
 
   // ---- Common parameters ----
+  std::string waypoints_path_;
   std::vector<std::string> robots_ids_;
   std::vector<std::string> materials_ids_;
   std::vector<std::string> waypoints_ids_;
