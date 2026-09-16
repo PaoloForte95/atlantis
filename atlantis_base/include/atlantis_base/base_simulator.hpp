@@ -14,8 +14,10 @@
 #include <nav_msgs/msg/path.hpp>
 #include <navigo/costmap/costmap.h>
 #include <navigo/planner/car_planner.h>
+#include <navigo/planner/utils.h>
 #include <rosgraph_msgs/msg/clock.hpp>
 #include <std_msgs/msg/int64.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include <map>
 #include <memory>
@@ -56,6 +58,9 @@ public:
 
   RvizVisualization & getRvizVisualization() { return rviz_viz_; }
 
+  bool usePrecomputedPaths() const {return use_precomputed_paths_;}
+  navigo::Path loadPrecomputedPath(const navigo::Pose & start, const navigo::Pose & goal);
+
 protected:
 
   void onConfigureExtra() override;
@@ -78,6 +83,15 @@ private:
 
   void publishRobotMarkers();
 
+  void publishRobotTransforms();
+
+  navigo::Pose readFirstPose(const std::string & file_path) const;
+  navigo::Pose readLastPose(const std::string & file_path) const;
+  bool posesMatch(const navigo::Pose & a, const navigo::Pose & b) const;
+  std::string findPathFile(
+    const std::string & folder, const navigo::Pose & start, const navigo::Pose & goal) const;
+  navigo::Path loadPath(const std::string & file_path) const;
+
   // ---- Layer parameters ----
   std::string map_yaml_;
   std::string lattice_primitives_;
@@ -99,6 +113,7 @@ private:
 
   mutable std::mutex sim_time_mutex_;
   double sim_time_{0.0};
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
   // ---- Publishers ----
   rclcpp_lifecycle::LifecyclePublisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub_;
@@ -116,6 +131,7 @@ private:
   rclcpp::TimerBase::SharedPtr clock_timer_;
   rclcpp::TimerBase::SharedPtr pose_timer_;
   rclcpp::TimerBase::SharedPtr marker_timer_;
+  rclcpp::TimerBase::SharedPtr tf_timer_;
 };
 
 }  // namespace atlantis_base

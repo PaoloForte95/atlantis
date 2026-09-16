@@ -3,10 +3,120 @@
 #include <atlantis_base/base_simulator.hpp>
 
 #include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <cmath>
+#include <stdexcept>
 
 namespace atlantis_base
 {
 
+
+navigo::Pose BaseSimulator::readFirstPose(const std::string & file_path) const
+{
+  std::ifstream file(file_path);
+  std::string line;
+  if (file.is_open() && std::getline(file, line)) {
+    std::stringstream ss(line);
+    navigo::Pose pose;
+    ss >> pose.x >> pose.y >> pose.theta;
+    return pose;
+  }
+  throw std::runtime_error("Could not read the first line of " + file_path);
+}
+
+navigo::Pose BaseSimulator::readLastPose(const std::string & file_path) const
+{
+  std::ifstream file(file_path);
+  std::string line, last_line;
+  while (std::getline(file, line)) {
+    if (!line.empty()) {
+      last_line = line;
+    }
+  }
+  if (!last_line.empty()) {
+    std::stringstream ss(last_line);
+    navigo::Pose pose;
+    ss >> pose.x >> pose.y >> pose.theta;
+    return pose;
+  }
+  throw std::runtime_error("Could not read the last line of " + file_path);
+}
+
+bool BaseSimulator::posesMatch(const navigo::Pose & a, const navigo::Pose & b) const
+{
+  const double tolerance = 0.1;
+  return std::fabs(a.x - b.x) < tolerance &&
+         std::fabs(a.y - b.y) < tolerance &&
+         std::fabs(a.theta - b.theta) < tolerance;
+}
+
+std::string BaseSimulator::findPathFile(
+  const std::string & folder,
+  const navigo::Pose & start,
+  const navigo::Pose & goal) const
+{
+  if (!std::filesystem::exists(folder)) {
+    RCLCPP_ERROR(get_logger(), "Precomputed paths folder does not exist: %s", folder.c_str());
+    return "";
+  }
+
+  for (const auto & entry : std::filesystem::directory_iterator(folder)) {
+    if (!entry.is_regular_file() || entry.path().extension() != ".txt") {
+      continue;
+    }
+    try {
+      auto file_start = readFirstPose(entry.path().string());
+      auto file_goal = readLastPose(entry.path().string());
+      if (posesMatch(file_start, start) && posesMatch(file_goal, goal)) {
+        RCLCPP_INFO(get_logger(), "Found precomputed path %s", entry.path().c_str());
+        return entry.path().string();
+      }
+    } catch (const std::runtime_error & e) {
+      RCLCPP_WARN(get_logger(), "Skipping %s: %s", entry.path().c_str(), e.what());
+    }
+  }
+
+  RCLCPP_ERROR(
+    get_logger(), "No precomputed path from (%f, %f, %f) to (%f, %f, %f)",
+    start.x, start.y, start.theta, goal.x, goal.y, goal.theta);
+  return "";
+}
+
+navigo::Path BaseSimulator::loadPath(const std::string & file_path) const
+{
+  navigo::Path path;
+  std::ifstream file(file_path);
+  if (!file.is_open()) {
+    RCLCPP_ERROR(get_logger(), "Could not open %s", file_path.c_str());
+    return path;
+  }
+
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.empty()) {
+      continue;
+    }
+    std::stringstream ss(line);
+    navigo::Pose pose;
+    ss >> pose.x >> pose.y >> pose.theta;
+    path.push_back(pose);
+  }
+  return path;
+}
+
+navigo::Path BaseSimulator::loadPrecomputedPath(
+  const navigo::Pose & start,
+  const navigo::Pose & goal)
+{
+  auto folder = atlantis::util::resolve_pkg_uri(precomputed_paths_folder_);
+  auto file = findPathFile(folder, start, goal);
+  if (file.empty()) {
+    return navigo::Path();
+  }
+  return loadPath(file);
+}
   
 
 BaseSimulator::BaseSimulator(
@@ -167,7 +277,7 @@ void BaseSimulator::buildPlanners()
       navigo::PlannerParams planning_params;
       planning_params.tolerance = goal_tolerance_;
       planning_params.max_planning_time = max_planning_time_;
-      search_info.minimum_turning_radius = rb.minimum_turning_radius;
+      search_info.minimum_turning_radius = rb.info.minimum_turning_radius;
       auto car_planner = new navigo::CarPlanner("CarPlanner", navigo::MotionModel::REEDS_SHEPP, search_info,planning_params, navigo::PlanningAlgorithm::RRTstar);
       base_planners_[robot] = car_planner;
   }
@@ -188,16 +298,18 @@ void BaseSimulator::buildPerRobotPublishers()
 
 void BaseSimulator::publishRobotMarkers()
 {
-  for (const auto & robot : robotIds()) {
-    auto loc = world()->getRobotLocation(robot);
+  int index = 0;
+  for (const auto & robot : robots_) {
+    auto loc = world()->getRobotLocation(robot.name);
 
-    int id = 0;
-    size_t pos = robot.find_first_of("0123456789");
+    int id = index;
+    size_t pos = robot.name.find_first_of("0123456789");
     if (pos != std::string::npos) {
-      id = std::stoi(robot.substr(pos));
+      id = std::stoi(robot.name.substr(pos));
     }
 
-    rviz_viz_.publishRobot(id, loc.x, loc.y, loc.theta, "", id);
+    rviz_viz_.publishRobot(id, loc.x, loc.y, loc.theta, robot.model, 2);
+    ++index;
   }
 }
 
@@ -250,6 +362,7 @@ void BaseSimulator::onConfigureExtra()
     "/clock", rclcpp::QoS(rclcpp::KeepLast(10)));
   material_flow_pub_ = create_publisher<material_handler_msgs::msg::MaterialFlow>(
     "material_flow", rclcpp::QoS(rclcpp::KeepLast(1)).reliable());
+  tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
 }
 
 void BaseSimulator::onActivateExtra()
@@ -282,6 +395,10 @@ void BaseSimulator::onActivateExtra()
     std::chrono::milliseconds(100),
     [this]() { publishRobotMarkers(); });
 
+  tf_timer_ = create_wall_timer(
+    std::chrono::milliseconds(50),
+    [this]() { publishRobotTransforms(); });
+
   nav_msgs::msg::OccupancyGrid map_msg;
   rviz_viz_.convertCostMapToMsg(oc_->getResolution(), oc_->getSizeInCellsX(),oc_->getSizeInCellsY(), oc_->getData() , map_msg);
   map_msg.header.frame_id = "map";
@@ -295,6 +412,7 @@ void BaseSimulator::onDeactivateExtra()
   clock_timer_.reset();
   pose_timer_.reset();
   marker_timer_.reset();
+  tf_timer_.reset();
 
   map_pub_->on_deactivate();
 
@@ -325,6 +443,32 @@ void BaseSimulator::onCleanupExtra()
   material_flow_pub_.reset();
   clock_pub_.reset();
   map_pub_.reset();
+}
+
+void BaseSimulator::publishRobotTransforms()
+{
+  std::vector<geometry_msgs::msg::TransformStamped> transforms;
+  transforms.reserve(robots_.size());
+
+  for (const auto & robot : robots_) {
+    auto loc = world()->getRobotLocation(robot.name);
+    auto quat = atlantis::util::rpyToQuaternion(0.0, 0.0, loc.theta);
+
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = now();
+    tf.header.frame_id = "map";
+    tf.child_frame_id = robot.name + "/base_link";
+    tf.transform.translation.x = loc.x;
+    tf.transform.translation.y = loc.y;
+    tf.transform.translation.z = 0.0;
+    tf.transform.rotation.x = quat.x();
+    tf.transform.rotation.y = quat.y();
+    tf.transform.rotation.z = quat.z();
+    tf.transform.rotation.w = quat.w();
+    transforms.push_back(tf);
+  }
+
+  tf_broadcaster_->sendTransform(transforms);
 }
 
 }  // namespace atlantis_base

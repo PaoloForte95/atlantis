@@ -36,6 +36,8 @@ find_package(nav_msgs REQUIRED)
 find_package(GRAPHICSMAGICKCPP REQUIRED)
 find_package(material_handler_msgs REQUIRED)
 find_package(location_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(atlantis_util REQUIRED)
 
 if(NOT EIGEN3_FOUND)
@@ -63,6 +65,8 @@ set(dependencies
   material_handler_msgs
   ament_index_cpp
   location_msgs
+  tf2_ros
+  tf2_geometry_msgs
   atlantis_util
 )
 
