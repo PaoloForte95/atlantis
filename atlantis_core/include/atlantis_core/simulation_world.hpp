@@ -30,6 +30,7 @@ public:
   // ---- Materials ----
   void addMaterial(const Material & material);
   double getMaterialAmount(const std::string & material_name, const std::string & location) const;
+  std::vector<Material> getMaterials() const;
   void setMaterialAmount(
     const std::string & material_name,
     const std::string & location,

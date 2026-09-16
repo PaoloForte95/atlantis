@@ -43,23 +43,33 @@ struct Material
   }
 };
 
-// The state of a single robot.
-struct RobotState
+
+struct RobotInfo
 {
   std::string name;
   std::string type;
-  Waypoint current_location;
-
-  //Planner
+  
   double minimum_turning_radius;
   std::string model;
   std::string footprint;
   std::string planner;
 
-  //Capacity
-  double loaded_amount;
   double capacity;
 };
+
+
+// The state of a single robot.
+struct RobotState
+{
+  RobotInfo info;
+  Waypoint current_location;
+  double loaded_amount;
+
+};
+
+
+
+
 
 }  // namespace atlantis_core
 

@@ -12,7 +12,7 @@ namespace atlantis_core
 void SimulationWorld::addRobot(const RobotState & robot)
 {
   std::lock_guard<std::mutex> lock(mutex_);
-  robots_[robot.name] = robot;
+  robots_[robot.info.name] = robot;
 }
 
 bool SimulationWorld::hasRobot(const std::string & name) const
@@ -57,7 +57,7 @@ double SimulationWorld::getCapacity(const std::string & name) const
   if (it == robots_.end()) {
     throw std::out_of_range("Robot not found: " + name);
   }
-  return it->second.capacity;
+  return it->second.info.capacity;
 }
 
 double SimulationWorld::getLoadedAmount(const std::string & name) const
@@ -68,6 +68,12 @@ double SimulationWorld::getLoadedAmount(const std::string & name) const
     throw std::out_of_range("Robot not found: " + name);
   }
   return it->second.loaded_amount;
+}
+
+std::vector<Material> SimulationWorld::getMaterials() const
+{
+  std::lock_guard<std::mutex> lock(mutex_);
+  return materials_;
 }
 
 void SimulationWorld::setLoadedAmount(const std::string & name, double amount)

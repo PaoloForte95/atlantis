@@ -150,34 +150,57 @@ void SimulatorCore::buildWorld()
     double capacity, minimum_turning_radius;
     declare_parameter(name+".initial_pose.x", 0.0);
     declare_parameter(name+".initial_pose.y", 0.0);
-    declare_parameter(name+".initial_pose.theta", 0.0);
+    declare_parameter(name+".initial_pose.yaw", 0.0);
     declare_parameter(name+".minimum_turning_radius", 0.0);
     declare_parameter(name+".footprint", empty);
     declare_parameter(name + ".model", empty);
     declare_parameter(name + ".type", empty);
     declare_parameter(name + ".capacity", 0.0);
+    declare_parameter(name + ".material_publisher.topic", std::string("material_stock"));
+    declare_parameter(name + ".material_publisher.rate", 1.0);
+
 
     get_parameter(name + ".initial_pose.x", start_location.x);
     get_parameter(name + ".initial_pose.y", start_location.y);
-    get_parameter(name + ".initial_pose.theta", start_location.theta);
+    get_parameter(name + ".initial_pose.yaw", start_location.theta);
     get_parameter(name + ".footprint", footprint_points);
     get_parameter(name + ".capacity", capacity);
     get_parameter(name + ".model", model);
     get_parameter(name + ".type", type);
     get_parameter(name + ".minimum_turning_radius", minimum_turning_radius);
+    get_parameter(name + ".material_publisher.topic", material_topic_);
+    get_parameter(name + ".material_publisher.rate", material_publish_rate_);
 
     RobotState robot;
-    robot.name = name;
+    robot.info.name = name;
+    robot.info.type = type;
+    robot.info.capacity = capacity;
+    robot.info.model = model;
+    robot.info.minimum_turning_radius = minimum_turning_radius;
+    robot.info.footprint = footprint_points;
+    
     robot.current_location = start_location;
-    robot.type = type;
-    robot.capacity = capacity;
-    robot.model = model;
     robot.loaded_amount = 0.0;
-    robot.minimum_turning_radius = minimum_turning_radius;
     world_->addRobot(robot);
+    robots_.push_back(robot.info);
 
     RCLCPP_INFO(get_logger(), "Robot %s starts at (%f, %f, %f)",name.c_str(), start_location.x, start_location.y, start_location.theta);
   }
+}
+
+void SimulatorCore::publishMaterials()
+{
+  material_handler_msgs::msg::MaterialStockArray msg;
+  for (const auto & material : world_->getMaterials()) {
+    for (const auto & entry : material.amounts) {
+      material_handler_msgs::msg::MaterialStock stock;
+      stock.material = material.name;
+      stock.location = entry.first;
+      stock.amount = entry.second;
+      msg.stocks.push_back(stock);
+    }
+  }
+  material_pub_->publish(msg);
 }
 
 void SimulatorCore::loadActions()
@@ -186,10 +209,10 @@ void SimulatorCore::loadActions()
     "atlantis_core", "atlantis_core::ActionPlugin");
 
   std::set<std::string> seen_topics;
-  for (const auto & robot : robots_ids_) {
+  for (const auto & robot : robots_) {
     for (const auto & action : action_names_) {
       PluginConfig config;
-      config.name = robot + "." + action;
+      config.name = robot.name + "." + action;
 
       std::string topic_suffix;
       if (!has_parameter(action + ".type")) {
@@ -212,7 +235,7 @@ void SimulatorCore::loadActions()
       if (topic_suffix.empty()) {
         topic_suffix = action;
       }
-      config.topic = robot + "/" + topic_suffix;
+      config.topic = robot.name  + "/" + topic_suffix;
 
       if (!seen_topics.insert(config.topic).second) {
         RCLCPP_ERROR(
@@ -244,10 +267,10 @@ void SimulatorCore::loadServices()
     "atlantis_core", "atlantis_core::ServicePlugin");
 
   std::set<std::string> seen_topics;
-  for (const auto & robot : robots_ids_) {
+  for (const auto & robot : robots_) {
     for (const auto & service : service_names_) {
       PluginConfig config;
-      config.name = robot + "." + service;
+      config.name = robot.name + "." + service;
 
       std::string topic_suffix;
       if (!has_parameter(service + ".type")) {
@@ -269,7 +292,7 @@ void SimulatorCore::loadServices()
       if (topic_suffix.empty()) {
         topic_suffix = service;
       }
-      config.topic = robot + "/" + topic_suffix;
+      config.topic = robot.name  + "/" + topic_suffix;
 
       if (!seen_topics.insert(config.topic).second) {
         RCLCPP_ERROR(
@@ -329,6 +352,10 @@ CallbackReturn SimulatorCore::on_configure(const rclcpp_lifecycle::State &)
   waypoint_pub_ = create_publisher<location_msgs::msg::WaypointArray>(
     waypoint_topic_,
     rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+  
+  material_pub_ = create_publisher<material_handler_msgs::msg::MaterialStockArray>(
+    material_topic_,
+    rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
   onConfigureExtra();
   return CallbackReturn::SUCCESS;
@@ -371,6 +398,11 @@ CallbackReturn SimulatorCore::on_activate(const rclcpp_lifecycle::State &)
   for (auto & plugin : service_plugins_) {
     plugin->activate();
   }
+  material_pub_->on_activate();
+  material_timer_ = create_wall_timer(
+    std::chrono::duration<double>(1.0 / material_publish_rate_),
+    std::bind(&SimulatorCore::publishMaterials, this));
+
   onActivateExtra();
   return CallbackReturn::SUCCESS;
 }
@@ -385,6 +417,8 @@ CallbackReturn SimulatorCore::on_deactivate(const rclcpp_lifecycle::State &)
   for (auto & plugin : action_plugins_) {
     plugin->deactivate();
   }
+  material_timer_.reset();
+  material_pub_->on_deactivate();
   waypoint_pub_->on_deactivate();
   for (auto & pair : metrics_pubs_) {
     pair.second->on_deactivate();
@@ -411,6 +445,7 @@ CallbackReturn SimulatorCore::on_cleanup(const rclcpp_lifecycle::State &)
   }
   metrics_pubs_.clear();
   waypoint_pub_.reset();
+  material_pub_.reset();
   world_.reset();
   return CallbackReturn::SUCCESS;
 }

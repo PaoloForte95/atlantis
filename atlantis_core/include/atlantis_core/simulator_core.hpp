@@ -8,6 +8,10 @@
 #include <atlantis_core/simulation_world.hpp>
 #include <atlantis_util/file_handler.h>
 
+#include <chrono>
+#include <material_handler_msgs/msg/material_stock.hpp>
+#include <material_handler_msgs/msg/material_stock_array.hpp>
+
 #include <location_msgs/msg/waypoint_array.hpp>
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
@@ -41,6 +45,7 @@ public:
   CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state) override;
 
 protected:
+  std::vector<RobotInfo> robots_;
   // Hooks for layer specific behavior.
   virtual void onConfigureExtra() {}
   virtual void onActivateExtra() {}
@@ -53,7 +58,15 @@ protected:
 
   // Helpers a subclass may use.
   std::shared_ptr<SimulationWorld> world() const { return world_; }
-  const std::vector<std::string> & robotIds() const { return robots_ids_; }
+  std::vector<std::string> robotIds() const
+  {
+    std::vector<std::string> ids;
+    ids.reserve(robots_.size());
+    for (const auto & robot : robots_) {
+      ids.push_back(robot.name);
+    }
+    return ids;
+  }
 
 private:
   void loadCommonParameters();
@@ -61,6 +74,7 @@ private:
   void loadActions();
   void loadServices();
   void setupMetrics();
+  void publishMaterials();
   std::vector<Waypoint> loadWaypointsFromFile(const std::string & file_path);
 
   // ---- Common parameters ----
@@ -89,8 +103,14 @@ private:
   // ---- Waypoint publisher ----
   std::string waypoint_topic_;
   std::string waypoint_frame_id_;
-  rclcpp_lifecycle::LifecyclePublisher<location_msgs::msg::WaypointArray>::SharedPtr
-    waypoint_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<location_msgs::msg::WaypointArray>::SharedPtr waypoint_pub_;
+
+  // ---- Material publisher ----
+  std::string material_topic_;
+  double material_publish_rate_;
+  rclcpp_lifecycle::LifecyclePublisher<material_handler_msgs::msg::MaterialStockArray>::SharedPtr
+    material_pub_;
+  rclcpp::TimerBase::SharedPtr material_timer_;
 };
 
 }  // namespace atlantis_core
