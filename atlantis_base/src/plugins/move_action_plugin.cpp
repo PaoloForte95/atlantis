@@ -106,8 +106,7 @@ void MoveActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
   navigo::Pose goal_pose;
   goal_pose.x = goal->pose.pose.position.x;
   goal_pose.y = goal->pose.pose.position.y;
-  goal_pose.theta =
-    2.0 * std::atan2(goal->pose.pose.orientation.z, goal->pose.pose.orientation.w);
+  goal_pose.theta = 2.0 * std::atan2(goal->pose.pose.orientation.z, goal->pose.pose.orientation.w);
 
   auto start_loc = world_->getRobotLocation(robot_name_);
   navigo::Pose start_pose;
@@ -126,7 +125,16 @@ void MoveActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
   checker->setFootprint(navigo::Footprint(xcoords, ycoords));
   planner->setCollisionChecker(checker.get());
 
-  navigo::Path path = planner->computePath(start_pose, goal_pose);
+  navigo::Path path;
+  if (base_sim_->usePrecomputedPaths()) {
+    path = base_sim_->loadPrecomputedPath(start_pose, goal_pose);
+    if (path.size() == 0) {
+      RCLCPP_INFO(node_->get_logger(), "Trying to compute a path on the fly for %s", robot_name_.c_str());
+      path = planner->computePath(start_pose, goal_pose);
+    }
+  } else {
+    path = planner->computePath(start_pose, goal_pose);
+  }
   if (path.size() == 0) {
     RCLCPP_ERROR(node_->get_logger(), "No path for %s", robot_name_.c_str());
     goal_handle->abort(result);
