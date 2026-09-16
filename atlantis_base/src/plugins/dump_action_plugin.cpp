@@ -5,6 +5,7 @@
 #include <material_handler_msgs/msg/material_flow.hpp>
 #include <pluginlib/class_list_macros.hpp>
 
+#include <algorithm>
 #include <thread>
 
 namespace atlantis_base
@@ -56,13 +57,21 @@ void DumpActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
   const auto & location = goal->location;
 
   double t_start = base_sim_->getSimTime();
-  double delta = world_->getLoadedAmount(robot_name_);
+  double loaded = world_->getLoadedAmount(robot_name_);
 
-  if (delta <= 0.0) {
+  if (loaded <= 0.0) {
     result->material_dumped = false;
     goal_handle->abort(result);
     return;
   }
+
+  double requested = static_cast<double>(goal->amount);
+  double delta = (requested > 0.0) ? std::min(requested, loaded) : loaded;
+  double remaining = loaded - delta;
+
+  RCLCPP_INFO(node_->get_logger(),
+    "Dumping %.2f of %.2f held by %s, keeping %.2f in the carrier",
+    delta, loaded, robot_name_.c_str(), remaining);
 
   double current = world_->getMaterialAmount(material_name, location);
   if (current < 0.0) current = 0.0;
@@ -75,6 +84,7 @@ void DumpActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
     running_total += delta / num_steps;
     world_->setMaterialAmount(material_name, location, current);
     base_sim_->advanceSimTime(step_dt);
+    std::this_thread::sleep_for(std::chrono::duration<double>(step_dt));
 
     feedback->amount_dumped = running_total;
     goal_handle->publish_feedback(feedback);
@@ -88,7 +98,7 @@ void DumpActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
     pub->publish(msg);
   }
 
-  world_->setLoadedAmount(robot_name_, 0.0);
+  world_->setLoadedAmount(robot_name_, remaining);
 
   double duration = base_sim_->getSimTime() - t_start;
   result->time.sec = static_cast<int32_t>(duration);
