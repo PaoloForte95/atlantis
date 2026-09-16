@@ -53,22 +53,38 @@ void LoadActionPlugin::initialize(
     [this](const std::shared_ptr<GoalHandle> gh) {
       std::thread{[this, gh]() { this->execute(gh); }}.detach();
     });
+    
+  gen_.seed(1);
+  ///////////////////////////////
+   rclcpp::QoS seed_qos(1);
+  seed_qos.transient_local().reliable();
+
+  seed_sub_ = node_->create_subscription<std_msgs::msg::Int32>(
+    "/simulation_seed", seed_qos,
+    [this](const std_msgs::msg::Int32::SharedPtr msg) {
+      seed_ = msg->data;
+      RCLCPP_INFO(node_->get_logger(), "Received seed %d", seed_);
+      gen_.seed(seed_);
+    });
+   
+    ///////////////////////////////
 }
 
 void LoadActionPlugin::cleanup()
 {
   server_.reset();
+  seed_sub_.reset();
 }
 
 double LoadActionPlugin::generateRandomValue(double amount,
                                              double uncertainty)
 {
-    static thread_local std::mt19937 gen{std::random_device{}()};
+    //static thread_local std::mt19937 gen{std::random_device{}()};
 
-    const double mean = 0.8 * amount;
+    const double mean = amount;
     const double stddev = uncertainty * amount;
     std::normal_distribution<double> dist(mean, stddev);
-    return std::max(0.0, dist(gen));
+    return std::max(0.0, dist(gen_));
 }
 
 void LoadActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
@@ -100,6 +116,8 @@ void LoadActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
         : amount_to_load)
     : available;
 
+  amount_loaded_total = std::min({amount_loaded_total, capacity, available});
+
   const int num_steps = 5;
   const double step_dt = 0.5;
   double remaining = available;
@@ -111,6 +129,7 @@ void LoadActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
       world_->setMaterialAmount(material_name, location, remaining);
     }
     base_sim_->advanceSimTime(step_dt);
+    std::this_thread::sleep_for(std::chrono::duration<double>(step_dt));
 
     feedback->amount_loaded = running_total;
     goal_handle->publish_feedback(feedback);

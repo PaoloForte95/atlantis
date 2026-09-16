@@ -8,7 +8,7 @@
 
 #include <material_handler_msgs/action/load_material.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
-
+#include <std_msgs/msg/int32.hpp>
 #include <memory>
 #include <string>
 
@@ -43,6 +43,11 @@ private:
   bool randomness_{false};
   double uncertainty_{0.0};
   rclcpp_action::Server<Action>::SharedPtr server_;
+  //////////////////////
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr seed_sub_;
+  int seed_{0};
+  std::mt19937 gen_;
+  //////////////////////
 };
 
 }  // namespace atlantis_base
