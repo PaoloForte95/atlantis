@@ -1,0 +1,7 @@
+<library path="atlantis_rviz_plugins">
+  <class name="atlantis_rviz_plugins/MaterialPanel"
+         type="atlantis_rviz_plugins::MaterialPanel"
+         base_class_type="rviz_common::Panel">
+    <description>Shows the amount of each material at each location.</description>
+  </class>
+</library>
