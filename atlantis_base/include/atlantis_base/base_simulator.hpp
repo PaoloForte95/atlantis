@@ -88,15 +88,16 @@ private:
   navigo::Pose readFirstPose(const std::string & file_path) const;
   navigo::Pose readLastPose(const std::string & file_path) const;
   bool posesMatch(const navigo::Pose & a, const navigo::Pose & b) const;
-  std::string findPathFile(
-    const std::string & folder, const navigo::Pose & start, const navigo::Pose & goal) const;
+  std::string findPathFile(const std::string & folder, const navigo::Pose & start, const navigo::Pose & goal) const;
   navigo::Path loadPath(const std::string & file_path) const;
 
   // ---- Layer parameters ----
   std::string map_yaml_;
   std::string lattice_primitives_;
   std::string primitives_dir_;
+  std::string path_costs_;
   bool use_precomputed_paths_{false};
+  bool compute_path_costs_{false};
   std::string precomputed_paths_folder_;
   bool use_trajectory_dt_{false};
   double goal_tolerance_{0.5};
@@ -107,6 +108,7 @@ private:
 
   // ---- Layer state ----
   navigo::CostMap * oc_{nullptr};
+  std::map<std::string, std::unique_ptr<navigo::GridCollisionChecker>> collision_checkers_;
   std::map<std::string, navigo::CarPlanner *> base_planners_;
   std::map<std::string, std::vector<geometry_msgs::msg::Point>> robot_footprints_;
   RvizVisualization rviz_viz_;

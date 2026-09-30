@@ -6,10 +6,36 @@
 
 #include <chrono>
 #include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <mutex>
+#include <string>
 #include <thread>
 
 namespace atlantis_base
 {
+
+namespace
+{
+
+const char kPathFile[] = "path1.txt";
+std::mutex path_file_mutex;
+
+bool savePath(const navigo::Path & path, const std::string & file_name)
+{
+  std::lock_guard<std::mutex> lock(path_file_mutex);
+  std::ofstream file(file_name, std::ios::trunc);
+  if (!file.is_open()) {
+    return false;
+  }
+  file << std::fixed << std::setprecision(6);
+  for (size_t i = 0; i < path.size(); ++i) {
+    file << path[i].x << " " << path[i].y << " " << path[i].theta << " 0\n";
+  }
+  return static_cast<bool>(file);
+}
+
+} 
 
 void MoveActionPlugin::initialize(
   rclcpp_lifecycle::LifecycleNode * node,
@@ -114,31 +140,44 @@ void MoveActionPlugin::execute(const std::shared_ptr<GoalHandle> goal_handle)
   start_pose.y = start_loc.y;
   start_pose.theta = start_loc.theta;
 
-  const auto & footprint = base_sim_->getFootprint(robot_name_);
-  std::vector<double> xcoords, ycoords;
-  for (const auto & p : footprint) {
-    xcoords.push_back(p.x);
-    ycoords.push_back(p.y);
-  }
+  // const auto & footprint = base_sim_->getFootprint(robot_name_);
+  // std::vector<double> xcoords, ycoords;
+  // for (const auto & p : footprint) {
+  //   xcoords.push_back(p.x);
+  //   ycoords.push_back(p.y);
+  // }
 
-  auto checker = std::make_unique<navigo::GridCollisionChecker>(base_sim_->getCostmap());
-  checker->setFootprint(navigo::Footprint(xcoords, ycoords));
-  planner->setCollisionChecker(checker.get());
+  // auto checker = std::make_unique<navigo::GridCollisionChecker>(base_sim_->getCostmap());
+  // checker->setFootprint(navigo::Footprint(xcoords, ycoords));
+  // planner->setCollisionChecker(checker.get());
 
   navigo::Path path;
+  bool computed = false;
   if (base_sim_->usePrecomputedPaths()) {
     path = base_sim_->loadPrecomputedPath(start_pose, goal_pose);
     if (path.size() == 0) {
       RCLCPP_INFO(node_->get_logger(), "Trying to compute a path on the fly for %s", robot_name_.c_str());
       path = planner->computePath(start_pose, goal_pose);
+      computed = true;
     }
   } else {
     path = planner->computePath(start_pose, goal_pose);
+    computed = true;
   }
   if (path.size() == 0) {
     RCLCPP_ERROR(node_->get_logger(), "No path for %s", robot_name_.c_str());
     goal_handle->abort(result);
     return;
+  }
+
+  if (computed) {
+    if (savePath(path, kPathFile)) {
+      RCLCPP_INFO(
+        node_->get_logger(), "Saved path for %s to %s", robot_name_.c_str(), kPathFile);
+    } else {
+      RCLCPP_WARN(
+        node_->get_logger(), "Could not save path for %s to %s", robot_name_.c_str(), kPathFile);
+    }
   }
 
   nav_msgs::msg::Path plan;

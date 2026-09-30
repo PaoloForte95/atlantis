@@ -19,9 +19,12 @@ public:
     const std::string & ns = "",
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
+    void onConfigureExtra() override;
+
 protected:
   std::vector<std::string> defaultActions() const override;
   std::vector<std::string> defaultServices() const override;
+  
 };
 
 }  // namespace atlantis_simulator

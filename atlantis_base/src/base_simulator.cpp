@@ -8,6 +8,18 @@
 #include <sstream>
 #include <cmath>
 #include <stdexcept>
+#include <iomanip>
+#include <locale>
+
+
+double pathLength(const navigo::Path & path)
+{
+  double length = 0.0;
+  for (size_t i = 1; i < path.size(); ++i) {
+    length += std::hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+  }
+  return length;
+}
 
 namespace atlantis_base
 {
@@ -239,6 +251,8 @@ void BaseSimulator::loadBaseParameters()
   declare_parameter("dt", 0.1);
   declare_parameter("real_time_factor", 1.0);
   declare_parameter("max_sim_time", 0.0);
+  declare_parameter("path_costs", "path_costs.csv");
+  declare_parameter("compute_path_costs", false);
 
   get_parameter("map", map_yaml_);
   get_parameter("lattice_primitives", lattice_primitives_);
@@ -251,7 +265,8 @@ void BaseSimulator::loadBaseParameters()
   get_parameter("dt", dt_);
   get_parameter("real_time_factor", real_time_factor_);
   get_parameter("max_sim_time", max_sim_time_);
-
+  get_parameter("path_costs", path_costs_);
+  get_parameter("compute_path_costs", compute_path_costs_);
   rviz_viz_.startVisualization();
 }
 
@@ -269,17 +284,29 @@ void BaseSimulator::buildCostmap()
 
 void BaseSimulator::buildPlanners()
 {
-
   for (const auto & robot : robotIds()) {
     auto rb = world()->getRobotInfo(robot);
     RCLCPP_INFO(get_logger(), "Setting up planner for %s", robot.c_str());
-      navigo::SearchParams search_info;
-      navigo::PlannerParams planning_params;
-      planning_params.tolerance = goal_tolerance_;
-      planning_params.max_planning_time = max_planning_time_;
-      search_info.minimum_turning_radius = rb.info.minimum_turning_radius;
-      auto car_planner = new navigo::CarPlanner("CarPlanner", navigo::MotionModel::REEDS_SHEPP, search_info,planning_params, navigo::PlanningAlgorithm::RRTstar);
-      base_planners_[robot] = car_planner;
+    navigo::SearchParams search_info;
+    navigo::PlannerParams planning_params;
+    planning_params.tolerance = goal_tolerance_;
+    planning_params.max_planning_time = max_planning_time_;
+    search_info.minimum_turning_radius = rb.info.minimum_turning_radius;
+    auto car_planner = new navigo::CarPlanner(
+      "CarPlanner", navigo::MotionModel::REEDS_SHEPP, search_info, planning_params,
+      navigo::PlanningAlgorithm::RRTstar);
+    const auto & footprint = getFootprint(robot);
+    std::vector<double> xcoords, ycoords;
+    for (const auto & p : footprint) {
+      xcoords.push_back(p.x);
+      ycoords.push_back(p.y);
+    }
+
+    auto checker = std::make_unique<navigo::GridCollisionChecker>(getCostmap());
+    checker->setFootprint(navigo::Footprint(xcoords, ycoords));
+    car_planner->setCollisionChecker(checker.get());
+    collision_checkers_[robot] = std::move(checker);
+    base_planners_[robot] = car_planner;
   }
 }
 
@@ -363,6 +390,65 @@ void BaseSimulator::onConfigureExtra()
   material_flow_pub_ = create_publisher<material_handler_msgs::msg::MaterialFlow>(
     "material_flow", rclcpp::QoS(rclcpp::KeepLast(1)).reliable());
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
+
+  navigo::CarPlanner * planner = nullptr;
+  if (!base_planners_.empty()) {
+    const std::string robot = base_planners_.begin()->first;
+    planner = getPlanner(robot);
+    RCLCPP_INFO(get_logger(), "Path costs: using the planner of %s for missing paths", robot.c_str());
+  }
+
+  if(compute_path_costs_) {
+      const auto waypoints = world()->getWaypoints();
+      std::vector<std::vector<double>> lengths(waypoints.size(), std::vector<double>(waypoints.size(), 0.0));
+      for (size_t i = 0; i < waypoints.size(); ++i) {
+        for (size_t j = i + 1; j < waypoints.size(); ++j) {
+          navigo::Pose start(waypoints[i].x, waypoints[i].y, waypoints[i].theta);
+          navigo::Pose goal(waypoints[j].x, waypoints[j].y, waypoints[j].theta);
+          navigo::Path path = loadPrecomputedPath(start, goal);
+          if (path.empty() && planner != nullptr) {
+            path = planner->computePath(start, goal);
+          }
+          double length = std::numeric_limits<double>::infinity();
+          if (path.empty()) {
+            RCLCPP_WARN(get_logger(), "No path between %s and %s", waypoints[i].name.c_str(), waypoints[j].name.c_str());
+          } else {
+            length = pathLength(path);
+          }
+          lengths[i][j] = length;
+          lengths[j][i] = length;
+        }
+      }
+
+      std::ofstream costs("path_costs.csv");
+      if (!costs.is_open()) {
+        RCLCPP_ERROR(get_logger(), "Cannot create path_costs.csv");
+        return;
+      }
+      costs.imbue(std::locale::classic());
+      costs << std::fixed << std::setprecision(3);
+      costs << "# unit: m\n";
+      costs << "location";
+      for (const auto & wp : waypoints) {
+        costs << "," << wp.name;
+      }
+      costs << "\n";
+      for (size_t i = 0; i < waypoints.size(); ++i) {
+        costs << waypoints[i].name;
+        for (size_t j = 0; j < waypoints.size(); ++j) {
+          costs << ",";
+          if (std::isinf(lengths[i][j])) {
+            costs << "inf";
+          } else {
+            costs << lengths[i][j];
+          }
+        }
+        costs << "\n";
+      }
+      RCLCPP_INFO(get_logger(), "Path costs written to path_costs.csv");
+  }
+
+
 }
 
 void BaseSimulator::onActivateExtra()
