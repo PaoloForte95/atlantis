@@ -20,6 +20,7 @@
   <depend>std_msgs</depend>
   <depend>location_msgs</depend>
   <depend>atlantis_util</depend>
+  <depend>standard_msgs</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

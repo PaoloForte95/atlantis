@@ -18,6 +18,7 @@ find_package(location_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(atlantis_util REQUIRED)
 find_package(material_handler_msgs REQUIRED)
+find_package(standard_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 if(NOT EIGEN3_FOUND)
   find_package(Eigen REQUIRED)
@@ -45,6 +46,7 @@ ament_target_dependencies(${PROJECT_NAME}
   location_msgs
   atlantis_util
   material_handler_msgs
+  standard_msgs
 )
 
 include_directories(
@@ -75,6 +77,6 @@ install(
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-ament_export_dependencies(pluginlib rclcpp rclcpp_lifecycle std_msgs location_msgs yaml-cpp material_handler_msgs)
+ament_export_dependencies(pluginlib rclcpp rclcpp_lifecycle std_msgs location_msgs yaml-cpp material_handler_msgs standard_msgs)
 
 ament_package()

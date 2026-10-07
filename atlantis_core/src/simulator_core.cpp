@@ -357,6 +357,10 @@ CallbackReturn SimulatorCore::on_configure(const rclcpp_lifecycle::State &)
     material_topic_,
     rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
+  robots_pubs_ = create_publisher<standard_msgs::msg::StringMultiArray>(
+    "robot_ids",
+    rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+
   onConfigureExtra();
   return CallbackReturn::SUCCESS;
 }
@@ -368,9 +372,16 @@ CallbackReturn SimulatorCore::on_activate(const rclcpp_lifecycle::State &)
     pair.second->on_activate();
   }
   waypoint_pub_->on_activate();
+  robots_pubs_->on_activate();
 
-  // Publish the waypoint list once. Transient local QoS ensures
-  // late subscribers still receive it.
+  //Publish the robot IDs once. Transient local QoS ensures late subscribers still receive it.
+  standard_msgs::msg::StringMultiArray robot_msg;
+  for (const auto & robot : robots_) {
+    robot_msg.data.push_back(robot.name);
+  }
+  robots_pubs_->publish(robot_msg);
+
+  // Publish the waypoint list once. Transient local QoS ensures late subscribers still receive it.
   location_msgs::msg::WaypointArray msg;
   msg.header.stamp = now();
   msg.header.frame_id = waypoint_frame_id_;
@@ -420,6 +431,7 @@ CallbackReturn SimulatorCore::on_deactivate(const rclcpp_lifecycle::State &)
   material_timer_.reset();
   material_pub_->on_deactivate();
   waypoint_pub_->on_deactivate();
+  robots_pubs_->on_deactivate();
   for (auto & pair : metrics_pubs_) {
     pair.second->on_deactivate();
   }
@@ -446,6 +458,7 @@ CallbackReturn SimulatorCore::on_cleanup(const rclcpp_lifecycle::State &)
   metrics_pubs_.clear();
   waypoint_pub_.reset();
   material_pub_.reset();
+  robots_pubs_.reset();
   world_.reset();
   return CallbackReturn::SUCCESS;
 }

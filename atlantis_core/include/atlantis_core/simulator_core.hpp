@@ -11,6 +11,7 @@
 #include <chrono>
 #include <material_handler_msgs/msg/material_stock.hpp>
 #include <material_handler_msgs/msg/material_stock_array.hpp>
+#include <standard_msgs/msg/string_multi_array.hpp>
 
 #include <location_msgs/msg/waypoint_array.hpp>
 #include <pluginlib/class_loader.hpp>
@@ -88,6 +89,7 @@ private:
 
   // ---- Shared state ----
   std::shared_ptr<SimulationWorld> world_;
+  rclcpp_lifecycle::LifecyclePublisher<standard_msgs::msg::StringMultiArray>::SharedPtr robots_pubs_;
 
   // ---- Plugin ----
   std::unique_ptr<pluginlib::ClassLoader<ActionPlugin>> action_loader_;
