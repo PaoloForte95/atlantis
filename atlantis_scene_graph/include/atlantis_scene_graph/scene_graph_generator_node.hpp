@@ -1,5 +1,5 @@
-#ifndef ATLANTIS_STATE_ATLANTIS_STATE_GENERATOR_NODE_HPP_
-#define ATLANTIS_STATE_ATLANTIS_STATE_GENERATOR_NODE_HPP_
+#ifndef ATLANTIS_SCENE_GRAPH_ATLANTIS_SCENE_GRAPH_GENERATOR_NODE_HPP_
+#define ATLANTIS_SCENE_GRAPH_ATLANTIS_SCENE_GRAPH_GENERATOR_NODE_HPP_
 
 #include <chrono>
 #include <string>
@@ -10,30 +10,31 @@
 
 #include "pluginlib/class_loader.hpp"
 #include "pluginlib/class_list_macros.hpp"
-#include "atlantis_state/state_generator.hpp"
+#include "atlantis_scene_graph/scene_graph_generator.hpp"
+#include "rclcpp_lifecycle/lifecycle_publisher.hpp"
 
 
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-namespace atlantis_state
+namespace atlantis_scene_graph
 {
 /**
  * @brief 
  * 
  */
-class StateGeneratorNode : public rclcpp_lifecycle::LifecycleNode
+class SceneGraphGeneratorNode : public rclcpp_lifecycle::LifecycleNode
 {
 
 public:
   
-  StateGeneratorNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  SceneGraphGeneratorNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
   /**
    * @brief Destroy the State Generator object
    * 
    */
-  ~StateGeneratorNode();
+  ~SceneGraphGeneratorNode();
 
   /**
    * @brief Configure member variables and initializes planner
@@ -68,32 +69,32 @@ public:
 
 protected:
   /**
-   * @brief Publish a path for visualization purposes
-   * @param path Reference to Global Path
+   * @brief Publish the scene graph when it is complete
    */
-  void publishState();
+  void publishSceneGraph();
 
-    /**
-   * @brief Method to get plan from the desired plugin
-   * @param start starting pose
-   * @param goal goal request
-   * @return Path
+  /**
+   * @brief Get the scene graph from the plugin
+   * @return Scene graph
    */
-  standard_msgs::msg::StringMultiArray generateState();
+  scene_graph_msgs::msg::SceneGraph generateSceneGraph();
 
 
-  atlantis_state::StateGenerator::Ptr state_generator_;
-  pluginlib::ClassLoader<atlantis_state::StateGenerator> gp_loader_;
+
+
+  atlantis_scene_graph::SceneGraphGenerator::Ptr scene_graph_generator_;
+  pluginlib::ClassLoader<atlantis_scene_graph::SceneGraphGenerator> gp_loader_;
   std::string default_id_;
   std::string default_type_;
-  std::string state_generator_id_;
-  std::string state_generator_type_;
+  std::string scene_graph_generator_id_;
+  std::string scene_graph_generator_type_;
+  std::string domain_file_;
+  double scene_graph_rate_{1.0};
 
-  rclcpp::TimerBase::SharedPtr timer_state_publisher_; // Used to publish the symbolic state
+  rclcpp::TimerBase::SharedPtr timer_scene_graph_publisher_; // Used to publish the scene graph
 
-
-  // Publishers for the state
-  rclcpp_lifecycle::LifecyclePublisher<standard_msgs::msg::StringMultiArray>::SharedPtr state_publisher_;
+  // Publishers for the scene graph
+  rclcpp_lifecycle::LifecyclePublisher<scene_graph_msgs::msg::SceneGraph>::SharedPtr scene_graph_publisher_;
 
 
 };

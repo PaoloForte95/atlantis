@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>atlantis_state</name>
+  <name>atlantis_scene_graph</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="paolo.forte@oru.se">Paolo Forte</maintainer>
@@ -15,6 +15,7 @@
   <depend>standard_msgs</depend>
   <depend>atlantis_util</depend>
   <depend>atlantis_core</depend>
+  <depend>scene_graph_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

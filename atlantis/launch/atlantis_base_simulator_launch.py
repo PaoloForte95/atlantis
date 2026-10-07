@@ -70,10 +70,10 @@ def generate_launch_description():
                     output="screen")],
     )
 
-    state_generator_launch_cmd = Node(
-                package='atlantis_state',
-                executable='state_generator',
-                name='state_generator',
+    scene_graph_generator_launch_cmd = Node(
+                package='atlantis_scene_graph',
+                executable='scene_graph_generator',
+                name='scene_graph_generator',
                 output='screen',
                 parameters=[scenario])
     
@@ -89,7 +89,7 @@ def generate_launch_description():
     ld.add_action(static_transform_node)
     
     ld.add_action(start_rviz_cmd)
-    ld.add_action(state_generator_launch_cmd)
+    ld.add_action(scene_graph_generator_launch_cmd)
     ld.add_action(TimerAction(period=1.0, actions=[simulator_launch_cmd]))
     #ld.add_action(TimerAction(period=1.0, actions=[generate_rviz_config_file_cmd]))
 

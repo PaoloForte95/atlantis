@@ -11,7 +11,7 @@
   <exec_depend>atlantis_base</exec_depend>
   <exec_depend>atlantis_simple_commander</exec_depend>
   <exec_depend>atlantis_discrete_event</exec_depend>
-  <exec_depend>atlantis_state</exec_depend>
+  <exec_depend>atlantis_scene_graph</exec_depend>
   <exec_depend>atlantis_util</exec_depend>
   <exec_depend>ros2launch</exec_depend>	
   <test_depend>ament_lint_auto</test_depend>

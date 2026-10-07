@@ -1,0 +1,5 @@
+<library path="atlantis_agent_scene_graph_generator">
+  <class name="atlantis_scene_graph::AgentSceneGraphGenerator" type="atlantis_scene_graph::AgentSceneGraphGenerator" base_class_type="atlantis_scene_graph::SceneGraphGenerator">
+    <description>Agent Scene Graph Generator</description>
+  </class>
+</library>
