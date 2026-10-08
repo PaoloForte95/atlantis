@@ -83,14 +83,14 @@ SceneGraphGeneratorNode::SceneGraphGeneratorNode(const rclcpp::NodeOptions & opt
 : rclcpp_lifecycle::LifecycleNode("atlantis_scene_graph_generator_node", "", options),
   gp_loader_("atlantis_scene_graph", "atlantis_scene_graph::SceneGraphGenerator"),
   default_id_("AgentSceneGraphGenerator"),
-  default_type_("atlantis_scene_graph::SceneGraphGenerator")
+  default_type_("atlantis_scene_graph::AgentSceneGraphGenerator")
 {
   RCLCPP_INFO(get_logger(), "Creating scene graph generator node");
 
-  declare_parameter("scene_graph_generator_plugin", default_id_);
+  declare_parameter("plugin", default_id_);
   declare_parameter("domain_file", std::string(""));
   declare_parameter("scene_graph_rate", 1.0);
-  get_parameter("scene_graph_generator_plugin", scene_graph_generator_id_);
+  get_parameter("plugin", scene_graph_generator_id_);
   get_parameter("domain_file", domain_file_);
   get_parameter("scene_graph_rate", scene_graph_rate_);
 
