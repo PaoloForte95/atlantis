@@ -88,9 +88,9 @@ void RvizVisualization::publishRobot(int ID, double x, double y, double theta,st
             marker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
             marker.action = visualization_msgs::msg::Marker::ADD;
             marker.mesh_resource = mesh_model;
-            marker.scale.x = 0.8;
-            marker.scale.y = 0.8;
-            marker.scale.z = 0.8;
+            marker.scale.x = 0.5;
+            marker.scale.y = 0.5;
+            marker.scale.z = 0.5;
         }
         else{
             marker.type = visualization_msgs::msg::Marker::CUBE;
