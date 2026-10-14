@@ -88,10 +88,10 @@ SceneGraphGeneratorNode::SceneGraphGeneratorNode(const rclcpp::NodeOptions & opt
   RCLCPP_INFO(get_logger(), "Creating scene graph generator node");
 
   declare_parameter("plugin", default_id_);
-  declare_parameter("domain_file", std::string(""));
+  declare_parameter("scene_graph_file", std::string(""));
   declare_parameter("scene_graph_rate", 1.0);
   get_parameter("plugin", scene_graph_generator_id_);
-  get_parameter("domain_file", domain_file_);
+  get_parameter("scene_graph_file", scene_graph_file_);
   get_parameter("scene_graph_rate", scene_graph_rate_);
 
   if (scene_graph_generator_id_ == default_id_) {
@@ -116,8 +116,8 @@ SceneGraphGeneratorNode::on_configure(const rclcpp_lifecycle::State & /*state*/)
       scene_graph_generator_type_ = get_plugin_type_param( node, scene_graph_generator_id_);
       scene_graph_generator_ = gp_loader_.createUniqueInstance(scene_graph_generator_type_);
       RCLCPP_INFO( get_logger(), "Created scene graph generator plugin %s of type %s", scene_graph_generator_id_.c_str(), scene_graph_generator_type_.c_str());
+      scene_graph_generator_->setSceneGraphFile(scene_graph_file_);
       scene_graph_generator_->configure(node, scene_graph_generator_id_);
-      scene_graph_generator_->setDomainFile(domain_file_);
     } catch (const pluginlib::PluginlibException & ex) {
       RCLCPP_FATAL( get_logger(), "Failed to create scene graph generator. Exception: %s", ex.what());
       return CallbackReturn::FAILURE;

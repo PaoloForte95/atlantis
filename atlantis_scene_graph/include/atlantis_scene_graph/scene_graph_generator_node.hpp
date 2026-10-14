@@ -88,7 +88,7 @@ protected:
   std::string default_type_;
   std::string scene_graph_generator_id_;
   std::string scene_graph_generator_type_;
-  std::string domain_file_;
+  std::string scene_graph_file_;
   double scene_graph_rate_{1.0};
 
   rclcpp::TimerBase::SharedPtr timer_scene_graph_publisher_; // Used to publish the scene graph
@@ -101,4 +101,4 @@ protected:
 
 } 
 
-#endif 
+#endif

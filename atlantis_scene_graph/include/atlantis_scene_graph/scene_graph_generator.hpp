@@ -58,9 +58,13 @@ public:
    */
   virtual bool isReady() { return true; }
 
-  virtual void setDomainFile(const std::string & domain_file) { domain_file_ = domain_file; }
+  virtual void setSceneGraphFile(const std::string & scene_graph_file)
+  {
+    scene_graph_file_ = scene_graph_file;
+  }
+
 protected:
-  std::string domain_file_;
+  std::string scene_graph_file_;
 };
 
 } 

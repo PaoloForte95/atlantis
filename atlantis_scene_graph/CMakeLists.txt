@@ -15,6 +15,7 @@ find_package(scene_graph_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(atlantis_util REQUIRED)
 find_package(atlantis_core REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
 set(dependencies
   rclcpp
@@ -27,6 +28,7 @@ set(dependencies
   scene_graph_msgs
   atlantis_util
   atlantis_core
+  ament_index_cpp
   Eigen3
 )
 
@@ -57,7 +59,8 @@ add_library(atlantis_agent_scene_graph_generator SHARED
 )
 
 ament_target_dependencies(atlantis_agent_scene_graph_generator
-  ${dependencies}
+  ${dependencies} 
+  ament_index_cpp
 )
 target_link_libraries(atlantis_agent_scene_graph_generator 
   Eigen3::Eigen

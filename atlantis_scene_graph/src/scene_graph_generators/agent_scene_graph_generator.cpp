@@ -9,6 +9,7 @@
 #include <utility>
 #include <cctype>
 
+#include "ament_index_cpp/get_package_share_directory.hpp"
 #include "atlantis_scene_graph/scene_graph_generators/agent_scene_graph_generator.hpp"
 
 namespace atlantis_scene_graph
@@ -102,6 +103,45 @@ std::vector<std::string> parseArgumentTypes(const std::string & arguments)
   return types;
 }
 
+geometry_msgs::msg::Pose readPose(const YAML::Node & node)
+{
+  geometry_msgs::msg::Pose pose;
+
+  const YAML::Node position = node["position"];
+  if (position) {
+    pose.position.x = position["x"].as<double>(0.0);
+    pose.position.y = position["y"].as<double>(0.0);
+    pose.position.z = position["z"].as<double>(0.0);
+  }
+
+  const YAML::Node orientation = node["orientation"];
+  if (orientation) {
+    pose.orientation.x = orientation["x"].as<double>(0.0);
+    pose.orientation.y = orientation["y"].as<double>(0.0);
+    pose.orientation.z = orientation["z"].as<double>(0.0);
+    pose.orientation.w = orientation["w"].as<double>(1.0);
+  }
+
+  return pose;
+}
+
+scene_graph_msgs::msg::Node readNode(const std::string & id, const YAML::Node & value)
+{
+  scene_graph_msgs::msg::Node node;
+  node.id = id;
+
+  if (value.IsScalar()) {
+    node.type = toLower(value.as<std::string>());
+    return node;
+  }
+
+  node.type = toLower(value["type"].as<std::string>("object"));
+  if (value["pose"]) {
+    node.pose = readPose(value["pose"]);
+  }
+  return node;
+}
+
 }
 
 AgentSceneGraphGenerator::AgentSceneGraphGenerator()
@@ -138,6 +178,9 @@ void AgentSceneGraphGenerator::configure(
   node->get_parameter("types_file", types_file_);
   node->declare_parameter("predicates_file", std::string(""));
   node->get_parameter("predicates_file", predicates_file_);
+  types_file_ = resolvePath(types_file_);
+  predicates_file_ = resolvePath(predicates_file_);
+  scene_graph_file_ = resolvePath(scene_graph_file_);
   std::vector<std::string> object_names;
   node->declare_parameter("initial_objects", default_list);
   node->get_parameter("initial_objects", object_names);
@@ -208,6 +251,28 @@ void AgentSceneGraphGenerator::cleanup()
   RCLCPP_INFO(logger_, "Cleaning up plugin %s of type AgentSceneGraphGenerator", name_.c_str());
 }
 
+std::string AgentSceneGraphGenerator::resolvePath(const std::string & path) const
+{
+  const std::string prefix = "package://";
+  if (path.rfind(prefix, 0) != 0) {
+    return path;
+  }
+
+  const std::string rest = path.substr(prefix.size());
+  const auto slash = rest.find('/');
+  const std::string package = rest.substr(0, slash);
+  const std::string relative = (slash == std::string::npos) ? "" : rest.substr(slash);
+
+  try {
+    return ament_index_cpp::get_package_share_directory(package) + relative;
+  } catch (const std::exception & ex) {
+    RCLCPP_ERROR(
+      logger_, "Cannot find package %s for path %s: %s",
+      package.c_str(), path.c_str(), ex.what());
+    return path;
+  }
+}
+
 void AgentSceneGraphGenerator::loadTypes()
 {
   std::string text = kDefaultTypes;
@@ -236,8 +301,7 @@ void AgentSceneGraphGenerator::loadTypes()
 
 void AgentSceneGraphGenerator::loadPredicates()
 {
-  const YAML::Node defaults = YAML::Load(kDefaultPredicates);
-  YAML::Node root = defaults;
+  YAML::Node root = YAML::Load(kDefaultPredicates);
 
   if (predicates_file_.empty()) {
     RCLCPP_INFO(logger_, "No predicates file given, using the default predicates");
@@ -258,7 +322,7 @@ void AgentSceneGraphGenerator::loadPredicates()
     RCLCPP_ERROR(
       logger_, "Predicates file %s has a wrong format: %s. Using the default predicates",
       predicates_file_.c_str(), ex.what());
-    readPredicates(defaults);
+    readPredicates(YAML::Load(kDefaultPredicates));
   }
 }
 
@@ -324,6 +388,8 @@ void AgentSceneGraphGenerator::loadInitialState()
 {
   std::lock_guard<std::mutex> lock(mutex_);
 
+  loadSceneGraphFile();
+
   size_t object_count = 0;
   for (const auto & [id, type] : initial_objects_) {
     if (type != "object" && type_parents_.count(type) == 0) {
@@ -347,14 +413,7 @@ void AgentSceneGraphGenerator::loadInitialState()
       continue;
     }
 
-    if (!isValidFact(fact)) {
-      continue;
-    }
-
-    addFactNodes(fact);
-    const std::vector<std::string> args(fact.begin() + 1, fact.end());
-    if (!hasEdge(fact[0], args)) {
-      addEdge(fact[0], args);
+    if (addFact(fact)) {
       ++fact_count;
     }
   }
@@ -362,6 +421,73 @@ void AgentSceneGraphGenerator::loadInitialState()
   RCLCPP_INFO(
     logger_, "Loaded %zu initial objects and %zu initial facts",
     object_count, fact_count);
+}
+
+void AgentSceneGraphGenerator::loadSceneGraphFile()
+{
+  if (scene_graph_file_.empty()) {
+    return;
+  }
+
+  scene_graph_msgs::msg::SceneGraph file_graph;
+
+  try {
+    const YAML::Node root = YAML::LoadFile(scene_graph_file_);
+
+    const YAML::Node nodes = root["nodes"];
+    if (nodes && nodes.IsMap()) {
+      for (const auto & item : nodes) {
+        file_graph.nodes.push_back(readNode(item.first.as<std::string>(), item.second));
+      }
+    } else if (nodes) {
+      for (const auto & item : nodes) {
+        file_graph.nodes.push_back(readNode(item["id"].as<std::string>(), item));
+      }
+    }
+
+    for (const auto & item : root["edges"]) {
+      scene_graph_msgs::msg::Edge entry;
+      const YAML::Node relation = item["predicate"] ? item["predicate"] : item["relation"];
+      entry.relation = relation.as<std::string>();
+      if (item["args"]) {
+        entry.args = item["args"].as<std::vector<std::string>>();
+      }
+      file_graph.edges.push_back(entry);
+    }
+  } catch (const YAML::Exception & ex) {
+    RCLCPP_ERROR(
+      logger_, "Cannot load scene graph file %s: %s",
+      scene_graph_file_.c_str(), ex.what());
+    return;
+  }
+
+  size_t node_count = 0;
+  for (const auto & entry : file_graph.nodes) {
+    if (entry.id.empty()) {
+      continue;
+    }
+    if (entry.type != "object" && type_parents_.count(entry.type) == 0) {
+      RCLCPP_WARN(
+        logger_, "Node %s has an unknown type %s",
+        entry.id.c_str(), entry.type.c_str());
+    }
+    setNodeType(entry.id, entry.type);
+    updateNodePose(entry.id, entry.pose);
+    ++node_count;
+  }
+
+  size_t edge_count = 0;
+  for (const auto & entry : file_graph.edges) {
+    std::vector<std::string> fact = {entry.relation};
+    fact.insert(fact.end(), entry.args.begin(), entry.args.end());
+    if (addFact(fact)) {
+      ++edge_count;
+    }
+  }
+
+  RCLCPP_INFO(
+    logger_, "Loaded %zu nodes and %zu edges from %s",
+    node_count, edge_count, scene_graph_file_.c_str());
 }
 
 scene_graph_msgs::msg::SceneGraph AgentSceneGraphGenerator::generateSceneGraph()
@@ -544,15 +670,24 @@ void AgentSceneGraphGenerator::applyEffects(const std::vector<std::string> & eff
   }
 
   for (const auto & fact : adds) {
-    if (!isValidFact(fact)) {
-      continue;
-    }
-    addFactNodes(fact);
-    const std::vector<std::string> args(fact.begin() + 1, fact.end());
-    if (!hasEdge(fact[0], args)) {
-      addEdge(fact[0], args);
-    }
+    addFact(fact);
   }
+}
+
+bool AgentSceneGraphGenerator::addFact(const std::vector<std::string> & fact)
+{
+  if (fact.empty() || !isValidFact(fact)) {
+    return false;
+  }
+
+  addFactNodes(fact);
+  const std::vector<std::string> args(fact.begin() + 1, fact.end());
+  if (hasEdge(fact[0], args)) {
+    return false;
+  }
+
+  addEdge(fact[0], args);
+  return true;
 }
 
 bool AgentSceneGraphGenerator::isValidFact(const std::vector<std::string> & fact) const
@@ -642,8 +777,9 @@ atlantis_core::Waypoint AgentSceneGraphGenerator::findNearestWaypoint(double x, 
         double dy = y - wp.y;
         double distance = std::sqrt(dx * dx + dy * dy);
         double dtheta = std::fabs(theta - wp.theta);
-        if ((distance + dtheta) <= best_distance) {
-            best_distance = distance;
+        double score = distance + dtheta;
+        if (score <= best_distance) {
+            best_distance = score;
             best_match = wp;
         }
     }

@@ -3,6 +3,7 @@
 
 
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <string>
 #include <set>
@@ -102,6 +103,8 @@ private:
 
   std::vector<std::string> tokenize(const std::string & fact) const;
 
+  std::string resolvePath(const std::string & path) const;
+
   void loadTypes();
 
   void loadPredicates();
@@ -111,6 +114,10 @@ private:
   void checkSchema();
 
   void loadInitialState();
+
+  void loadSceneGraphFile();
+
+  bool addFact(const std::vector<std::string> & fact);
 
   bool isValidFact(const std::vector<std::string> & fact) const;
 
