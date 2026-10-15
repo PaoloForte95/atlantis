@@ -1,5 +1,3 @@
-// Copyright 2026 Atlantis
-
 #include <atlantis_discrete_event/plugins/move_action_plugin.hpp>
 
 #include <pluginlib/class_list_macros.hpp>
