@@ -1,5 +1,3 @@
-// Copyright 2026 Atlantis
-
 #ifndef ATLANTIS_DISCRETE_EVENT__DISCRETE_EVENT_SIMULATOR_HPP_
 #define ATLANTIS_DISCRETE_EVENT__DISCRETE_EVENT_SIMULATOR_HPP_
 
@@ -19,12 +17,18 @@ public:
     const std::string & ns = "",
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
-    void onConfigureExtra() override;
-
 protected:
+  void onConfigureExtra() override;
+
   std::vector<std::string> defaultActions() const override;
   std::vector<std::string> defaultServices() const override;
-  
+
+private:
+  void loadParameters();
+  void writePathCosts();
+
+  std::string path_costs_{"path_costs.csv"};
+  bool compute_path_costs_{false};
 };
 
 }  // namespace atlantis_simulator
