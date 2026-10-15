@@ -420,9 +420,9 @@ void BaseSimulator::onConfigureExtra()
         }
       }
 
-      std::ofstream costs("path_costs.csv");
+      std::ofstream costs(path_costs_);
       if (!costs.is_open()) {
-        RCLCPP_ERROR(get_logger(), "Cannot create path_costs.csv");
+        RCLCPP_ERROR(get_logger(), "Cannot create %s", path_costs_.c_str());
         return;
       }
       costs.imbue(std::locale::classic());
@@ -445,7 +445,7 @@ void BaseSimulator::onConfigureExtra()
         }
         costs << "\n";
       }
-      RCLCPP_INFO(get_logger(), "Path costs written to path_costs.csv");
+      RCLCPP_INFO(get_logger(), "Path costs written to %s", path_costs_.c_str());
   }
 
 
